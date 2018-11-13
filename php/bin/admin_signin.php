@@ -33,7 +33,7 @@ echo "<p><b>当前总票价：$money_num .</b></p>";
 echo "<FONT color=#ff0000>";
 echo "<p><b>热门车次</b></p>";
 echo "</FONT>";
-echo "<table border=\"4\"><tr><th>列车号</th><th>订单数</th><th>查看详情</th></tr>";
+echo "<table border=\"4\"><tr><th>列车号</th><th>订单数</th></tr>";
 /*
 while ( $i < 10 && $row = pg_fetch_row($ret) ){
 	echo "<tr><td>$row[0]</td><td>$row[1]</td></tr>";
@@ -56,6 +56,10 @@ echo "<FONT color=#66CD00>";
 echo "<p><b>当前已注册用户列表（包含游客）</b></p>";
 echo "</FONT>";
 echo "<table border = \"4\"><tr><th>用户ID</th><th>姓名</th><th>身份证号</th><th>手机号</th><th>信用卡号</th><th>用户名</th><th>查看订单</th</tr>";
+    echo "<tr>";
+    echo "<td></td><td></td><td></td><td></td><td></td><td></td>";
+    echo "<td><a href=\"../book/book_admin.php\" target=\"_blank\"><center>查看</center></a></td>";
+    echo "</tr>";
 //}
 /*
 while ( $row = pg_fetch_row($ret) ){
@@ -85,6 +89,8 @@ echo "</center>";
     <p style="background:url('https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1541069446753&di=de93c02b9660f67fa00bbfd2f950c0da&imgtype=0&src=http%3A%2F%2Fimage3.cnpp.cn%2Fupload%2Fimages%2F20170708%2F15472435643_210x210.gif') no-repeat;"></p>
     <b><MARQUEE onmouseover=this.stop() onmouseout=this.start() scrollAmount=10><FONT color=#0080ff>新用户现在注册绑定银行卡，将会获得满200减100特别优惠；老用户邀请新用户将会获得往返雁栖湖免费车票两张！！！机不可失，时不再来！</MARQUEE></b>
     </div>
+	    <br>
+	    <p><FONT type="楷体" size=2>Copyright © 2018 UCAS My 12306. All Rights Reserved. deep dark fantasy · King 版权所有</FONT></p>
 	</center>
 </body>
 </html>
