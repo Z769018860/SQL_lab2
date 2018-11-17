@@ -1,3 +1,4 @@
+-- new version
 psql lab2
 
 CREATE DATABASE lab2 OWNER root;
