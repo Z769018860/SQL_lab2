@@ -1,6 +1,4 @@
-su - postgres
-
-psql
+psql lab2
 
 CREATE DATABASE lab2 OWNER root;
 
@@ -74,14 +72,10 @@ CREATE TABLE Seat
     foreign key (Se_Train,Se_Station) references Train(T_Name,T_Station)
 );
 
-COPY Station
-
+\COPY Station
 FROM '/var/www/html/data/station-data.csv'
-
 WITH (FORMAT csv);
 
-COPY Train
-
+\COPY Train
 FROM '/var/www/html/data/train-data.csv'
-
 WITH (FORMAT csv);
