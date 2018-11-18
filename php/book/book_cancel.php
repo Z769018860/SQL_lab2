@@ -17,13 +17,6 @@
 session_start();
 $username = $_SESSION["username"];
 $userid = $_SESSION["userid"];
-$trainid = $_GET["trainid"];
-$from_date = $_GET["from_date"];
-$to_date = $_GET["to_date"];
-$type = $_GET["type"];
-$ticketprice = $_GET["price"];
-$from_station = $_GET["from_station"];
-$to_station = $_GET["to_station"];
 $bookid=$_GET["bookid"];
 
 echo "<center>";
@@ -36,66 +29,141 @@ echo "<center>";
         exit('数据库连接失败！');
     }
     echo "<script>alert('哦豁，数据库连接成功！')</script>";
+
+$get_train = <<<EOF
+		SELECT *
+		From Book
+		WHERE B_Id=$bookid;
+EOF;
+$ret=pg_query($dbconn,$get_train);
+$train_row=pg_fetch_row($ret);
+$trainid=$train_row[4];
+$from_station=$train_row[5];
+$to_station=$train_row[6];
+$date=$train_row[3];
+$price=$train_row[2];
 /*
-
-for ($x=$station_num1; $x<$station_num2; $x++) {
-    $query_seat_num = <<<EOF
-        select T_SeatNum
-        from TicketInfo
-        where T_TrainId = '$the_trainid'
-            and T_PStationNum = $x
-            and T_Type = '$the_type'
-            and T_Date = '$the_date';
-EOF;
-    $ret = pg_query($conn, $query_seat_num);
-	if (!$ret){
-		echo "执行失败";
-	}
-    $row = pg_fetch_row($ret);
-	$seat_num = $row[0];
-    if ($seat_num == 1){
-		$fuction = <<<EOF
-		DELETE
-        from TicketInfo
-        where T_TrainId = '$the_trainid'
-            and T_PStationNum = $x
-            and T_Type = '$the_type'
-            and T_Date = '$the_date';
-EOF;
-      $ret =  pg_query($conn, $fuction);
-		if (!$ret){
-			echo "执行失败";
-		}
-    }
-    else{
-        $new_seat_num = $seat_num - 1;
-        $fuction = <<<EOF
-            update TicketInfo
-            set T_SeatNum = $new_seat_num
-            where T_TrainId = '$the_trainid'
-                and T_PStationNum = $x
-                and T_Type = '$the_type'
-                and T_Date = '$the_date';
-EOF;
-        $ret = pg_query($conn, $fuction);
-		if (!$ret){
-			echo "执行失败";
-		}
-    }
-}
-
-$cancel = <<<EOF
-			UPDATE book
-			SET b_status = 'cancelled'
-			WHERE b_id = '$bookid';
-EOF;
-
-$del = pg_query($conn, $cancel);
+echo $userid;
+echo "<br>";
+echo $trainid;
+echo "<br>";
+echo $date;
+echo "<br>";
+echo $price;
+echo "<br>";
+echo $from_station;
+echo "<br>";
+echo $to_station;
+echo "<br>";
 */
+$get_train_info = <<<EOF
+				SELECT T_StartTime
+				FROM Train
+				WHERE T_Name = '$trainid'
+				AND T_Station = '$from_station';
+EOF;
+$ret=pg_query($dbconn,$get_train_info);
+if (!$ret)
+	echo "WARNING!!!!";
+$train_row=pg_fetch_row($ret);
+$go_time=$train_row[0];
 
-$del=($userid%2==0);
-if($del){
-    echo "<p><H4>您已成功取消一张 日期为 $date  时间为 $ime ，从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。</H4></p>";
+$get_train_info = <<<EOF
+		SELECT T_ArrivalTime
+		FROM Train
+		WHERE T_Name='$trainid'
+		AND T_Station='$to_station';
+EOF;
+$ret=pg_query($dbconn,$get_train_info);
+$train_row=pg_fetch_row($ret);
+$got_time=$train_row[0];
+/*
+echo $go_time;
+echo "<br>";
+echo $got_time;
+echo "<br>";
+*/
+$seatst   = array("YZ"=>"硬座", "RZ"=>"软座", "YW1"=>"硬卧上", "YW2"=>"硬卧中", "YW3"=>"硬卧下", "RW1"=>"软卧上", "RW2"=>"软卧下");
+$get_seat_type = <<<EOF
+		SELECT Se_Type
+		FROM Seat
+		WHERE Se_Train = '$trainid'
+		AND Se_Date = '$date'
+		AND Se_Station = '$to_station';
+EOF;
+$ret=pg_query($dbconn,$get_seat_type);
+if (!$ret)
+	echo "WARNING!!!!";
+$seat_row=pg_fetch_row($ret);
+$type=$seat_row[0];
+$seat=$seatst[$type];
+//echo $type;
+//echo $seat;
+//$del=($userid%2==0);
+$cancel = <<<EOF
+			UPDATE Book
+			SET B_Status = 'cancelled'
+			WHERE b_Id = '$bookid';
+EOF;
+$del = pg_query($dbconn, $cancel);
+
+//余票！！！！！！
+$get_stnum=<<<EOF
+				SELECT T_StNum
+				FROM Train
+				WHERE T_Name = '$trainid'
+				and T_Station = '$to_station';
+EOF;
+$ret_stnum = pg_query($dbconn, $get_stnum);
+$row_stnum = pg_fetch_row($ret_stnum);
+$to_stnum=$row_stnum[0]-1;
+
+$get_stnum=<<<EOF
+				SELECT T_StNum
+				FROM Train
+				WHERE T_Name = '$trainid'
+				and T_Station = '$from_station';
+EOF;
+$ret_stnum = pg_query($dbconn, $get_stnum);
+$row_stnum = pg_fetch_row($ret_stnum);
+$from_stnum=$row_stnum[0];
+
+//echo $to_stnum;
+$get_passby = <<<EOF
+				SELECT T_Station
+				FROM Train
+				WHERE T_Name = '$trainid'
+				and T_StNum between $from_stnum and $to_stnum;
+EOF;
+$ret_p = pg_query($dbconn, $get_passby);
+while ($row_p=pg_fetch_row($ret_p))
+{
+	$get_seat_num = <<<EOF
+				SELECT Se_Num
+				FROM Seat
+				WHERE Se_Train = '$trainid'
+				AND Se_Date = '$date'
+				AND Se_Station = '$row_p[0]'
+				AND Se_Type = '$type';
+EOF;
+$ret_s = pg_query($dbconn, $get_seat_num);
+if (!$ret_s)
+	echo "WARNING!!!!";
+$row_s = pg_fetch_row($ret_s);
+$new_num=$row_s[0]+1;
+//echo $new_num;
+$seat_num = <<<EOF
+				update Seat 
+				set Se_Num=$new_num 
+				WHERE Se_Train = '$trainid'
+				AND Se_Date = '$date'
+				AND Se_Station = '$row_p[0]'
+				AND Se_Type = '$type';
+EOF;
+$del2=pg_query($dbconn, $seat_num);
+}
+if($del&&$del2){
+    echo "<p><H4>您已成功取消一张 出发日期为 $date  出发时间为 $go_time ，到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。</H4></p>";
     echo "<script>alert('取消成功！')</script>";
 }
 else{

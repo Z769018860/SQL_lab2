@@ -50,17 +50,25 @@ echo "<center>";
 echo "<p><b>当前总订单数：$ticket_num .</b></p>";
 echo "<p><b>当前总票价：$money_num .</b></p>";
 
+$select_hot_train = <<<EOF
+				SELECT B_Train, COUNT(B_Train) 
+				FROM Book
+				GROUP BY B_Train ORDER BY  COUNT(B_Train) DESC;
+EOF;
+$ret = pg_query( $dbconn, $select_hot_train );
+$i = 0;
+
 echo "<FONT color=#ff0000>";
 echo "<p><b>热门车次</b></p>";
 echo "</FONT>";
 echo "<table border=\"4\"><tr><th>列车号</th><th>订单数</th></tr>";
 
-/*
+
 while ( $i < 10 && $row = pg_fetch_row($ret) ){
 	echo "<tr><td>$row[0]</td><td>$row[1]</td></tr>";
 	$i = $i + 1;
 }
-*/
+
 echo "</table>";
 echo "<br>";
 
@@ -70,38 +78,31 @@ $select_user = <<<EOF
 	SELECT * FROM MyUser;
 EOF;
 $ret = pg_query($dbconn, $select_user);
+
 $usernum = <<<EOF
-	SELECT COUNT(*) FROM Book;
+	SELECT COUNT(*) FROM MyUser;
 EOF;
-$ret = pg_query( $dbconn, $usernum );
-if (!$ret){
+$ret2 = pg_query( $dbconn, $usernum );
+if (!$ret2){
 	echo "执行失败";
 }
-$result = pg_fetch_row($ret);
+$result = pg_fetch_row($ret2);
 $user_num = $result[0];
-echo "<p><b>当前注册用户总数：$user_num .</b></p>";
+
 
 echo "<FONT color=#66CD00>";
-echo "<p><b>当前已注册用户列表（包含游客）</b></p>";
+echo "<p><b>当前已注册用户列表（包含游客）：$user_num </b></p>";
 echo "</FONT>";
-echo "<table border = \"4\"><tr><th>用户ID</th><th>姓名</th><th>身份证号</th><th>手机号</th><th>信用卡号</th><th>用户名</th><th>查看订单</th</tr>";
-    echo "<tr>";
-    echo "<td></td><td></td><td></td><td></td><td></td><td></td>";
-    echo "<td><a href=\"../book/book_admin.php\" target=\"_blank\"><center>查看</center></a></td>";
-    echo "</tr>";
+echo "<table border = \"4\"><tr><th>身份证号</th><th>手机号</th><th>用户名</th><th>姓名</th><th>信用卡号</th><th>查看订单</th</tr>";
 //}
-while ( $row = pg_fetch_row($ret) ){
-	$id = $row[0];
-	$username = $row[3];
+while ($row = pg_fetch_row($ret)){
+	$userid = $row[0];
+	$username = $row[2];
 	echo "<tr>";
-	for ($i = 0; $i < 2; $i = $i + 1){
+	for ($i = 0; $i < 5; $i = $i + 1){
 		echo "<td>$row[$i]</td>";	
 	}
-	echo "<td>$id</td>";
-	for ( $i = 2; $i < 5; $i = $i + 1 ){
-		echo "<td>$row[$i]</td>";
-	}
-	echo "<td><a href = \"userbook.php?username=$username&id=$userid\">订单</a></td>";
+	echo "<td><a href = \"../book/book_admin.php?username=$username&userid=$userid \" target=\"_blank\">查看</a></td>";
 	echo "</tr>";
 	}
 echo "</table>";

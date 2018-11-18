@@ -18,10 +18,17 @@ function datadd($n, $date){
 }
 session_start();
 $username = $_SESSION["username"];
-$userid = $_SESSION["userid"];
+//$userid = $_SESSION["userid"];
 $date_min = $_POST["from_date_min"];
 $date_max = $_POST["from_date_max"];
-
+/*
+echo $date_min;
+echo "<br>";
+echo $date_max;
+echo "<br>";
+echo $userid;
+echo "<br>";
+*/
 echo "<center>";
 echo "<H3>尊敬的用户 $username ，您的订单查询结果详情如下</H3>";
 
@@ -34,17 +41,30 @@ echo "<H3>尊敬的用户 $username ，您的订单查询结果详情如下</H3>
         exit('数据库连接失败！');
     }
     echo "<script>alert('哦豁，数据库连接成功！')</script>";
-/*
-$bookselect = <<<EOF
-	SELECT *
-	FROM book 
-	WHERE b_userid = '$id';
+
+$get_uid = <<<EOF
+			SELECT U_ICNum
+			FROM MyUser
+			WHERE U_UName = '$username';
 EOF;
-$ret = pg_query( $conn, $bookselect );
+$ret = pg_query($dbconn, $get_uid);
+$row = pg_fetch_row($ret);
+$userid = $row[0];
+//echo $userid;
+$_SESSION["userid"]=$userid;
+
+$select_book = <<<EOF
+			SELECT * 
+			FROM Book 
+			WHERE B_Date BETWEEN '$date_min' AND '$date_max' 
+			AND B_User = '$userid' ORDER BY B_Id;
+EOF;
+$ret = pg_query( $dbconn, $select_book );
 $row_num = pg_num_rows($ret);
-*/
-$row_num=($userid%2==0);
-if ($row_num == 0){
+if (!$ret)
+	echo "查询失败！";
+//$row_num=($userid%2==0);
+if (!$row_num){
 	echo "<b>";
 	$back_href = "../bin/admin_signin.php";
     echo "<p>";
@@ -62,37 +82,31 @@ if ($row_num == 0){
     echo "</b>";
 }
 else{
-$status = array ("normal"=>"未乘坐", "cancelled"=>"已取消", "past"=>"已乘坐");
-$seat   = array("YZ"=>"硬座", "RZ"=>"软座", "YW1"=>"硬卧上", "YW2"=>"硬卧中", "YW3"=>"硬卧下", "RW1"=>"软卧上", "RW2"=>"软卧下");
+$status = array ("cancelled"=>"已取消", "uncancelled"=>"未取消");
 
-$index_ofse = $info[6];
-$index_ofst = $info[8];
 echo "<table border = \"4\">";
 echo "<tr>";
 echo "<td>订单号</td>";
-echo "<td>下单日期</td>";
-echo "<td>出发站</td>";
-echo "<td>到达站</td>";
-echo "<td>座位类型</td>";
-echo "<td>票价</td>";
 echo "<td>订单状态</td>";
 echo "<td>查看详情</td>";
 echo "<td>是否取消</td>";
 echo "</tr>";
 
-echo "<tr>";
-echo "<td></td><td></td><td></td><td></td><td></td><td></td><td></td>";
-echo "<td><a href=\"../book/book_info.php\"  target=\"_blank\"><center>查看</center></a></td>";
-/*if ($info[8] = "normal"){*/
-    echo "<td><a href=\"../book/book_cancel.php\"  target=\"_blank\"><center>取消</center></a></td>";
-/*}
-else{
-	echo "<td>不可取消</td>";
-}
-*/
+while ($row = pg_fetch_row($ret))
+{
+	$bookst=$row[7];
+	echo "<tr>";
+	echo "<td>$row[0]</td>";
+	echo "<td>$status[$bookst]</td>";
+echo "<td><a href=\"../book/book_info.php?bookid=$row[0]\"  target=\"_blank\"><center>查看</center></a></td>";
+if ($row[7] == "uncancelled"){
+    echo "<td><a href=\"../book/book_cancel.php?bookid=$row[0]\"  target=\"_blank\"><center>取消</center></a></td>";
+}else	echo "<td>不可取消</td>";
+	echo "</tr>";
 }
 
 	echo "</table>";
+}
     echo "<br>";
 	echo "<div><p>
              <a href = \"../serve/book.php\"><input type=\"button\" value = \"返回订单查询\" onclick=\"location.href='./serve/dist_search.php'\"> </a></p></div>";

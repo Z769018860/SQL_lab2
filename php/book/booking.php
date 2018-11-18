@@ -58,43 +58,32 @@ echo "<H3>尊敬的用户 $username ，您是否要预订一张</H3>";
         exit('数据库连接失败！');
     }
     echo "<script>alert('哦豁，数据库连接成功！')</script>";
-/*
-$getfrom = <<<EOF
-			SELECT p_stationname
-			FROM passby
-			WHERE p_trainid = '$trainid'
-			 AND  p_stationnum = $first;
+
+$getgo = <<<EOF
+			SELECT T_Starttime
+			FROM Train
+			WHERE T_Name = '$trainid'
+			 AND  T_Station = '$from_station';
 EOF;
-$ret = pg_query($conn, $getfrom);
+$ret = pg_query($dbconn, $getgo);
 $row = pg_fetch_row($ret);
-$fromname = $row[0];
-$getto = <<<EOF
-			SELECT p_stationname
-			FROM passby
-			WHERE p_trainid = '$trainid'
-			 AND  p_stationnum = $last;
+$go_time = $row[0];
+$getgot = <<<EOF
+			SELECT T_Arrivaltime
+			FROM Train
+			WHERE T_Name = '$trainid'
+			 AND  T_Station = '$to_station';
 EOF;
-*/
-/*
-$ret = pg_query($conn, $getto);
+$ret = pg_query($dbconn, $getgot);
 $row = pg_fetch_row($ret);
-$toname = $row[0];
-$gettime = <<<EOF
-			SELECT p_gotime
-			FROM passby
-			WHERE p_trainid = '$trainid'
-			 AND  p_stationnum = 1;
-EOF;
-$ret = pg_query($conn, $gettime);
-$row = pg_fetch_row($ret);
-$gotime = $row[0];
+$got_time = $row[0];
 $price = $ticketprice + 5;
-*/
+
 //echo $price;
-echo "<p><H4>日期为 $date  时间为 $ime ，从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。点击下方确认生成订单，取消返回服务选择。</H4></p>";
+echo "<p><H4>出发日期为 $date  出发时间为 $go_time ，到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。点击下方确认生成订单，取消返回服务选择。</H4></p>";
 
 echo "<center>";
-echo "<input type=button value=\"确认\" onclick=\"window.location.href='book_confirm.php'\">";
+echo "<input type=button value=\"确认\" onclick=\"window.location.href='book_confirm.php?go_time=$go_time&got_time=$got_time&from_station=$from_station&to_station=$to_station&seat=$seat&type=$type&trainid=$trainid&date=$date&type=$type&price=$price'\">";
 echo "   ";
 echo "<input type=button value = \"取消\" onclick = \"window.location.href='../bin/user_signin.php'\">";
 echo "</center>";

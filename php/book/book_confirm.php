@@ -18,13 +18,38 @@ session_start();
 $username = $_SESSION["username"];
 $userid = $_SESSION["userid"];
 $trainid = $_GET["trainid"];
-$from_date = $_GET["from_date"];
-$to_date = $_GET["to_date"];
+$date = $_GET["date"];
 $type = $_GET["type"];
+$seat = $_GET["seat"];
 $ticketprice = $_GET["price"];
 $from_station = $_GET["from_station"];
 $to_station = $_GET["to_station"];
-$bookid=$_GET["bookid"];
+$go_time = $_GET["go_time"];
+$got_time = $_GET["got_time"];
+$price=$ticketprice-5;
+/*
+echo $userid;
+echo "<br>";
+echo $trainid;
+echo "<br>";
+echo $date;
+echo "<br>";
+echo $type;
+echo "<br>";
+echo $seat;
+echo "<br>";
+echo $ticketprice;
+echo "<br>";
+echo $from_station;
+echo "<br>";
+echo $to_station;
+echo "<br>";*/
+/*
+$bookid=$_SESSION['bookid'];
+$bookid=$bookid+1;
+$_SESSION['bookid'] = $bookid;
+echo $bookid;
+echo "<br>";*/
 
 echo "<center>";
     $connection_string = "host=localhost port=5432 dbname=lab2 user=root password=111111";
@@ -36,27 +61,83 @@ echo "<center>";
         exit('数据库连接失败！');
     }
     echo "<script>alert('哦豁，数据库连接成功！')</script>";
-/*
-$get_uid = <<<EOF
-			SELECT user_id 
-			FROM userinfo
-			WHERE u_uname = '$username';
-EOF;
 
-$ret = pg_query($conn, $get_uid);
-$result = pg_fetch_row($ret);
-$uid = $result[0];
 
 $book = <<<EOF
-		INSERT INTO 
-    	book(B_UserId,B_TrainId,B_Date,B_StationNum1,B_StationNum2,B_SType,B_Money,B_Status)
-	    VALUES('$uid', '$trainid', '$date', $stnum1, $stnum2, '$seattype', $money, 'normal');
+	INSERT INTO 
+    	Book(B_User,B_Money,B_Date,B_Train,B_StartSt,B_ArrivalSt,B_Status)
+	VALUES('$userid', $ticketprice, '$date', '$trainid', '$from_station', '$to_station', 'uncancelled');
 EOF;
-$ins = pg_query($conn, $book);
-*/
-$ins=($userid%2==0);
-if($ins){
-    echo "<p><H4>您已成功预订一张 日期为 $date  时间为 $ime ，从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。可选购返程票或前往订单查询。</H4></p>";
+$ins = pg_query($dbconn, $book);
+//余票信息！！！！
+$get_stnum=<<<EOF
+				SELECT T_StNum
+				FROM Train
+				WHERE T_Name = '$trainid'
+				and T_Station = '$to_station';
+EOF;
+$ret_stnum = pg_query($dbconn, $get_stnum);
+$row_stnum = pg_fetch_row($ret_stnum);
+$to_stnum=$row_stnum[0]-1;
+
+$get_stnum=<<<EOF
+				SELECT T_StNum
+				FROM Train
+				WHERE T_Name = '$trainid'
+				and T_Station = '$from_station';
+EOF;
+$ret_stnum = pg_query($dbconn, $get_stnum);
+$row_stnum = pg_fetch_row($ret_stnum);
+$from_stnum=$row_stnum[0];
+
+//echo $to_stnum;
+$get_passby = <<<EOF
+				SELECT T_Station
+				FROM Train
+				WHERE T_Name = '$trainid'
+				and T_StNum between $from_stnum and $to_stnum;
+EOF;
+$ret_p = pg_query($dbconn, $get_passby);
+while ($row_p=pg_fetch_row($ret_p))
+{
+
+	$get_seat_num = <<<EOF
+				SELECT Se_Num
+				FROM Seat
+				WHERE Se_Train = '$trainid'
+				AND Se_Date = '$date'
+				AND Se_Station = '$row_p[0]'
+				AND Se_Type = '$type';
+EOF;
+$ret_s = pg_query($dbconn, $get_seat_num);
+$row_s = pg_fetch_row($ret_s);
+if (!$row_s[0])
+{
+$seat_num = <<<EOF
+	INSERT INTO 
+    	Seat(Se_Train,Se_Station,Se_Date,Se_Type,Se_Num)
+	VALUES('$trainid', '$row_p[0]', '$date', '$type', 4);
+EOF;
+}
+else
+{
+$new_num=$row_s[0]-1;
+$seat_num = <<<EOF
+				update Seat 
+				set Se_Num=$new_num 
+				WHERE Se_Train = '$trainid'
+				AND Se_Date = '$date'
+				AND Se_Station = '$row_p[0]'
+				AND Se_Type = '$type';
+EOF;
+}
+$ins2=pg_query($dbconn, $seat_num);
+if (!$ins2)
+	echo "WARINING!!!";
+}
+//$ins=($userid%2==0);
+if($ins&&$ins2){
+    echo "<p><H4>您已成功预订一张 出发日期为 $date  出发时间为 $go_time ，到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $ticketprice (含5元手续费) 。可选购返程票或前往订单查询。</H4></p>";
     echo "<script>alert('预订成功！')</script>";
 }
 else{
@@ -71,59 +152,15 @@ else{
     echo "</p>";
     echo "<p>";
     echo "<br>";
-    echo  "请<a href = $back_href>返回</a>重新预订。";
+    echo  "请<a href =\"../book/booking.php?from_station=$from_station&to_station=$to_station&seat=$seat&trainid=$trainid&date=$date&type=$type&price=$price\">返回</a>重新预订。";
     echo "</br>";
     echo "</p>";
     echo "</b>";
 	echo "</center>";
     echo "<script>alert('哦豁，预订失败！')</script>";
 }
-/*
-for ($x=$stnum1; $x<$stnum2; $x++) {
-    $query_seat_num = <<<EOF
-        select T_SeatNum
-        from TicketInfo
-        where T_TrainId = '$trainid'
-            and T_PStationNum = $x
-            and T_Type = '$seattype'
-            and T_Date = '$date';
-EOF;
-    $ret = pg_query($conn, $query_seat_num);
-	if (!$ret){
-		echo "执行失败";
-	}
-    $row_num = pg_num_rows($ret);
-    if ($row_num == 0){
-        $fuction = <<<EOF
-            insert into
-                TicketInfo(T_TrainId,T_PStationNum,T_Type,T_Date,T_SeatNum)
-            values ('$trainid', $x, '$seattype', '$date', 1);
-EOF;
-    $ret = pg_query($conn, $fuction);
-		if (!$ret){
-			echo "执行失败";
-		}
-    }
-    else{
-        $row = pg_fetch_row($ret);
-		$seat_num = $row[0];
-        $new_seat_num = $seat_num + 1;
-        $fuction = <<<EOF
-            update TicketInfo
-            set T_SeatNum = $new_seat_num
-            where T_TrainId = '$trainid'
-                and T_PStationNum = $x
-                and T_Type = '$seattype'
-                and T_Date = '$date';
-EOF;
-        $ret = pg_query($conn, $fuction);
-		if (!$ret){
-			echo "执行失败";
-		}
-    }
-}
-*/
-echo "<p><b><a href = \"book_back.php?fromname=$toname&toname=$fromname&date=$date&username=$username\">点击</a>查询返程信息。</b></p>";
+
+echo "<p><b><a href = \"book_back.php?from_station=$to_station&to_station=$from_station&date=$date&username=$username\">点击</a>查询返程信息。</b></p>";
 
     echo "<br>";
 	echo "<div><p>

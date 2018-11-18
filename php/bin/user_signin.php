@@ -16,7 +16,10 @@
 // 用户登录
 session_start();
 $username = $_POST["username"];
-$_SESSION["username"] = $username;
+if (!$username)
+	$username = $_SESSION["username"];
+else
+	$_SESSION["username"] = $username;
 
     $connection_string = "host=localhost port=5432 dbname=lab2 user=root password=111111";
 
