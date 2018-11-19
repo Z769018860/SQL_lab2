@@ -159,13 +159,6 @@ $ret_stnum = pg_query($dbconn, $get_stnum);
 $row_stnum = pg_fetch_row($ret_stnum);
 $to_stnum=$row_stnum[0]-1;
 //echo $to_stnum;
-/*$get_passby = <<<EOF
-				SELECT T_Station
-				FROM Train
-				WHERE T_Name = '$trainid'
-				and T_StNum between 1 and $to_stnum;
-EOF;
-$ret_p = pg_query($dbconn, $get_p);*/
 
 for ($i = 0; $i <7; $i = $i + 1){
 

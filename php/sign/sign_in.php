@@ -16,7 +16,7 @@
 			<div>用户名：<input type="text" name="username" value="<?php  Session_start(); 
  echo $_SESSION["username"]; ?>" required="required"></div>
             <div>　密码：<input type="password"name="password" value="<?php  Session_start(); 
- echo $_SESSION["password"]; ?>" required="required"></div>
+ echo $_SESSION["password"]; ?>" ></div>
 			<p><input type="submit" name="登录" value="登录" ><br></p>
 			</form></b>
     <div>

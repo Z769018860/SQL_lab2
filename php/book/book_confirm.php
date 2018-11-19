@@ -69,6 +69,8 @@ $book = <<<EOF
 	VALUES('$userid', $ticketprice, '$date', '$trainid', '$from_station', '$to_station', 'uncancelled');
 EOF;
 $ins = pg_query($dbconn, $book);
+if (!$ins)
+	echo "WTF!!!!!!!";
 //余票信息！！！！
 $get_stnum=<<<EOF
 				SELECT T_StNum
@@ -164,7 +166,7 @@ echo "<p><b><a href = \"book_back.php?from_station=$to_station&to_station=$from_
 
     echo "<br>";
 	echo "<div><p>
-             <a href = \"../search/book_search.php\"><input type=\"button\" value = \"返回订单查询\" onclick=\"location.href='./serve/dist_search.php'\"> </a></p></div>";
+             <a href = \"../serve/book.php\"><input type=\"button\" value = \"返回订单查询\" onclick=\"location.href='./serve/dist_search.php'\"> </a></p></div>";
 	echo "<div><p>
              <a href = \"../bin/user_signin.php\"><input type=\"button\" value = \"返回服务选择\" onclick=\"location.href='./serve/book.php'\"> </a></p></div>";
     echo "<div><p>

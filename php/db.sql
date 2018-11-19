@@ -52,7 +52,7 @@ CREATE TABLE MyUser
 CREATE TABLE Book
 (
     B_Id            serial primary key,
-    B_User          varchar(18) not null,
+    B_User          char(18) not null,
     B_Money         float not null,
     B_Date          date not null,
     B_Train         varchar(6) not null,

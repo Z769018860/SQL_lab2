@@ -68,7 +68,7 @@ echo "<td>用户名</td>";
 echo "<td>用户ID</td>";
 echo "<td>订单号</td>";
 echo "<td>列车号</td>";
-echo "<td>下单日期</td>";
+echo "<td>出发日期</td>";
 echo "<td>出发站</td>";
 echo "<td>到达站</td>";
 //echo "<td>座位类型</td>";

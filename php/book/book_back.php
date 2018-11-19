@@ -34,8 +34,8 @@ $date_new=datadd(1,$date);
 
  echo "<b>请输入您需要查询的起止信息</b>";
  echo "<form action=\"../search/dist.php\" method=\"post\">";
- echo "<div><p>出发站：<input type=\"text\" name = \"from_station\" value=\"$to_station\" required = \"required\"></p></div>";
- echo "<div><p>到达站：<input type=\"text\" name = \"to_station\" value=\"$from_station\" required = \"required\"></p></div>";
+ echo "<div><p>出发站：<input type=\"text\" name = \"from_station\" value=\"$from_station\" required = \"required\"></p></div>";
+ echo "<div><p>到达站：<input type=\"text\" name = \"to_station\" value=\"$to_station\" required = \"required\"></p></div>";
  echo "<div><p>出发日期：<input type=\"date\" name = \"from_date\"  value=\"$date_new\" required = \"required\"></p></div>";
  echo "<div><p>出发时刻：  <input type=\"time\" name = \"from_time\" value=\"00:00\"></p></div>
 			 <div><p><input type=\"submit\" name = \"查询\" value=\"查询\" ></p></div><br>

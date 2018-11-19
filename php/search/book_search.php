@@ -66,7 +66,7 @@ if (!$ret)
 //$row_num=($userid%2==0);
 if (!$row_num){
 	echo "<b>";
-	$back_href = "../bin/admin_signin.php";
+	$back_href = "../serve/book.php";
     echo "<p>";
     echo "<br>";
     echo "<FONT color=#ff0000>";
@@ -75,7 +75,7 @@ if (!$row_num){
     echo "</p>";
     echo "<p>";
     echo "<br>";
-    echo  "请<a href = $back_href>返回</a>重新选择用户";
+    echo  "请<a href = $back_href>返回</a>重新选择时间段";
     echo "</br>";
     echo "</p>";
     echo "</FONT>";

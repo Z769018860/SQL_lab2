@@ -19,8 +19,8 @@ function datadd($n, $date){
 ?>
  <b>请输入您需要查询的起止信息</b>
 	<form action="../search/dist.php" method="post">
-    <div><p>出发站：<input type="text" name = "from_station" value="北京" required = "required"></p></div>
-    <div><p>到达站：<input type="text" name = "to_station" value="常州" required = "required"></p></div>
+    <div><p>出发站：<input type="text" name = "from_city" value="北京" required = "required"></p></div>
+    <div><p>到达站：<input type="text" name = "to_city" value="常州" required = "required"></p></div>
 　	<div><p>出发日期：<input type="date" name = "from_date"  value="<?php echo datadd(1,date("Y/m/d")); ?>"required = "required"></p></div>
 	<div><p>出发时刻：  <input type="time" name = "from_time" value="00:00"></p></div>
 			 <div><p><input type="submit" name = "查询" value="查询" ></p></div><br>

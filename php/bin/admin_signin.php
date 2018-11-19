@@ -10,8 +10,8 @@
 	<p><H1 id="h1"> 欢迎访问果壳12306网站</H1></p>
             <a href="../index.php"><img src="../image/ad.png" /></a>
     <p style="background:url('../image/ad.png') no-repeat;"></p>
-	<div><p> <b>管理员您好！Hello，my master!</b></p></div>
-    <div><p> <b>以下信息请您过目：</b></p></div>
+	<div><h2> <b>管理员您好！Hello，my master!</b></h2></p></div>
+    <div><h2> <b>以下信息请您过目：</b></h2></div>
     <br>
 
 <?php
@@ -59,7 +59,7 @@ $ret = pg_query( $dbconn, $select_hot_train );
 $i = 0;
 
 echo "<FONT color=#ff0000>";
-echo "<p><b>热门车次</b></p>";
+echo "<h3><b>热门车次</b></h3>";
 echo "</FONT>";
 echo "<table border=\"4\"><tr><th>列车号</th><th>订单数</th></tr>";
 
@@ -91,7 +91,7 @@ $user_num = $result[0];
 
 
 echo "<FONT color=#66CD00>";
-echo "<p><b>当前已注册用户列表（包含游客）：$user_num </b></p>";
+echo "<h3><b>当前已注册用户列表（包含游客）：$user_num </b></h3>";
 echo "</FONT>";
 echo "<table border = \"4\"><tr><th>身份证号</th><th>手机号</th><th>用户名</th><th>姓名</th><th>信用卡号</th><th>查看订单</th</tr>";
 //}
