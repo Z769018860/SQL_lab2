@@ -10,7 +10,7 @@
 	<p><H1 id="h1"> 欢迎访问果壳12306网站</H1></p>
 	        <a href="../index.php"><img src="../image/ad.png" /></a>
     <p style="background:url('../image/ad.png') no-repeat;"></p>
-	<div><p> <b>新用户注册</b></p></div>
+	<div><h3> <b>新用户注册</b></h3></div>
 			<p><form action="../bin/user_signup.php" method="post">
 				<br>
                 姓名<br>

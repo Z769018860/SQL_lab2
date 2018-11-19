@@ -10,7 +10,7 @@
 	<p><H1 id="h1"> 欢迎访问果壳12306网站</H1></p>
         <a href="../index.php"><img src="../image/ad.png" /></a>
 
-	<div><p>请先注册或登录（或以游客身份浏览）</p></div>
+	<div><h3>请先注册或登录（或以游客身份浏览）</h3></div>
 	<span>
 			 <div><p>
              <input type="button" value = "注册" onclick="location.href='./sign/sign_up.php'"> </p></div>

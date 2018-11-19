@@ -89,7 +89,7 @@ $get_seat_type = <<<EOF
 		FROM Seat
 		WHERE Se_Train = '$trainid'
 		AND Se_Date = '$date'
-		AND Se_Station = '$to_station';
+		AND Se_Station = '$from_station';
 EOF;
 $ret=pg_query($dbconn,$get_seat_type);
 if (!$ret)

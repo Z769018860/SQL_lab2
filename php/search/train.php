@@ -161,7 +161,50 @@ $to_stnum=$row_stnum[0]-1;
 //echo $to_stnum;
 
 for ($i = 0; $i <7; $i = $i + 1){
+	for ($stnum=1;$stnum<=$to_stnum;$stnum=$stnum+1)
+	{
+$get_station=<<<EOF
+			SELECT T_Station
+			From Train
+			WHERE T_Name='$trainid'
+			and T_Stnum=$stnum;
+EOF;
+$ret_st=pg_query($dbconn,$get_station);
+$row_st=pg_fetch_row($ret_st);
+$station_temp=$row_st[0];
+	$get_seat = <<<EOF
+			SELECT Se_Num
+			FROM Seat
+			WHERE Se_Train = '$trainid'
+			and Se_date = '$train_date'
+			and Se_type = '$all_type[$i]'
+			and Se_Station = '$station_temp';
+EOF;
+$ret_gs=pg_query($dbconn,$get_seat);
+$row_gs_num=pg_num_rows($ret_gs);
+if (!$row_gs_num)
+{
+$get_train_station = <<<EOF
+				SELECT T_Station
+				From Train
+				Where T_Name = '$trainid'
+				and T_StNum = $stnum;
+EOF;
+$ret_st = pg_query($dbconn, $get_train_station);
+if (!$ret_st)
+	echo "FAILED123!!!!";
+$stnum_st=pg_fetch_row($ret_st);
+	$ins_seat = <<<EOF
+	INSERT INTO 
+    	Seat(Se_Train,Se_Station,Se_Date,Se_Type,Se_Num)
+	VALUES('$trainid', '$stnum_st[0]', '$train_date', '$all_type[$i]', 5);
+EOF;
+$ret_ins=pg_query($dbconn,$ins_seat);
+if (!$ret_ins)
+	echo "FAILED!!!!";
+}
 
+}
 	$get_seat_num = <<<EOF
 				SELECT MIN(Seat.Se_Num)
 				FROM Train,Seat
@@ -185,11 +228,8 @@ $hastype = array();
 $price = pg_fetch_row($ret_m);
 $hastype = array($price[5], $price[6], $price[7],
  $price[8], $price[9], $price[10], $price[11]);
-if (!$hastype[$i])
+if (!$hastype[$i]||!$row_s[0])
 	echo "<td> -- </td>";
-
-else if (!$row_s[0])
-	echo "<td><a href=\"../book/booking.php?date=$train_date&trainid=$trainid&date=$train_date&type=$all_type[$i]&price=$hastype[$i]&from_station=$first_name&to_station=$row[0]\">5</a></td>";
 
 else
 	echo "<td><a href=\"../book/booking.php?date=$train_date&trainid=$trainid&date=$train_date&type=$all_type[$i]&price=$hastype[$i]&from_station=$first_name&to_station=$row[0]\">$row_s[0]</a></td>";

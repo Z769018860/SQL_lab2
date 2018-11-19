@@ -10,7 +10,7 @@
 	<p><H1 id="h1"> 欢迎访问果壳12306网站</H1></p>
             <a href="../index.php"><img src="../image/ad.png" /></a>
     <p style="background:url('../image/ad.png') no-repeat;"></p>
-	<div><p> <b>管理员登录</b></p></div>
+	<div><h3> <b>管理员登录</b></h3></div>
 
 <?php
 // 管理员登录

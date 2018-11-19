@@ -10,7 +10,7 @@
 	<p><H1 id="h1"> 欢迎访问果壳12306网站</H1></p>
             <a href="../index.php"><img src="../image/ad.png" /></a>
     <p style="background:url('../image/ad.png') no-repeat;"></p>
-	<div><p> <b>老用户登录</b></p></div>
+	<div><h3> <b>老用户登录</b></h3></div>
 
 <?php 
 // 用户登录
@@ -20,6 +20,7 @@ if (!$username)
 	$username = $_SESSION["username"];
 else
 	$_SESSION["username"] = $username;
+
 
     $connection_string = "host=localhost port=5432 dbname=lab2 user=root password=111111";
 
@@ -61,6 +62,16 @@ if (!$sum){
 }
 else{
 	//$_SESSION["username"] = $_POST["username"];
+$get_uid=<<<EOF
+		SELECT U_ICNum
+		FROM MyUser
+		where U_UName='$username';
+EOF;
+$ret_uid=pg_query($dbconn,$get_uid);
+$row_uid=pg_fetch_row($ret_uid);
+$userid=$row_uid[0];
+$_SESSION['userid']=$userid;
+
 	$trainS_href = "../serve/train-search.php";
 	$distS_href  = "../serve/dist-search.php";
 	$bookS_href  = "../serve/book.php";

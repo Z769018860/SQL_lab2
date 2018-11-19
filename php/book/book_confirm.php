@@ -43,7 +43,8 @@ echo "<br>";
 echo $from_station;
 echo "<br>";
 echo $to_station;
-echo "<br>";*/
+echo "<br>";
+*/
 /*
 $bookid=$_SESSION['bookid'];
 $bookid=$bookid+1;
@@ -72,6 +73,8 @@ $ins = pg_query($dbconn, $book);
 if (!$ins)
 	echo "WTF!!!!!!!";
 //余票信息！！！！
+else
+{
 $get_stnum=<<<EOF
 				SELECT T_StNum
 				FROM Train
@@ -113,6 +116,7 @@ while ($row_p=pg_fetch_row($ret_p))
 EOF;
 $ret_s = pg_query($dbconn, $get_seat_num);
 $row_s = pg_fetch_row($ret_s);
+/*
 if (!$row_s[0])
 {
 $seat_num = <<<EOF
@@ -123,6 +127,7 @@ EOF;
 }
 else
 {
+*/
 $new_num=$row_s[0]-1;
 $seat_num = <<<EOF
 				update Seat 
@@ -132,10 +137,11 @@ $seat_num = <<<EOF
 				AND Se_Station = '$row_p[0]'
 				AND Se_Type = '$type';
 EOF;
-}
+//}
 $ins2=pg_query($dbconn, $seat_num);
 if (!$ins2)
 	echo "WARINING!!!";
+}
 }
 //$ins=($userid%2==0);
 if($ins&&$ins2){
