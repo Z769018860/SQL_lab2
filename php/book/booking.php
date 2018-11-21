@@ -13,6 +13,9 @@
 	<div><p> <b><H2>订单确认</h2></b></p></div>
 <br>
 <?php
+function datadd($n, $date){
+    return date("Y-m-d", strtotime($date ." +$n day"));
+}
 
 session_start();
 $username = $_SESSION["username"];
@@ -79,11 +82,17 @@ $row = pg_fetch_row($ret);
 $got_time = $row[0];
 $price = $ticketprice + 5;
 
+//到达日期判断
+	if (($got_time-$go_time)<0)
+		$to_date=datadd(1,$date);
+	else
+		$to_date=$date;
+
 //echo $price;
-echo "<p><H4>出发日期为 $date  出发时间为 $go_time ，到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。点击下方确认生成订单，取消返回服务选择。</H4></p>";
+echo "<p><H4>出发日期为 $date , 出发时间为 $go_time ，到达日期为 $to_date , 到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。点击下方确认生成订单，取消返回服务选择。</H4></p>";
 
 echo "<center>";
-echo "<input type=button value=\"确认\" onclick=\"window.location.href='book_confirm.php?go_time=$go_time&got_time=$got_time&from_station=$from_station&to_station=$to_station&seat=$seat&type=$type&trainid=$trainid&date=$date&type=$type&price=$price'\">";
+echo "<input type=button value=\"确认\" onclick=\"window.location.href='book_confirm.php?go_time=$go_time&got_time=$got_time&from_station=$from_station&to_station=$to_station&seat=$seat&type=$type&trainid=$trainid&date=$date&to_date=$to_date&type=$type&price=$price'\">";
 echo "   ";
 echo "<input type=button value = \"取消\" onclick = \"window.location.href='../bin/user_signin.php'\">";
 echo "</center>";

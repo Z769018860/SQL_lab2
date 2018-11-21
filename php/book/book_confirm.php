@@ -19,6 +19,7 @@ $username = $_SESSION["username"];
 $userid = $_SESSION["userid"];
 $trainid = $_GET["trainid"];
 $date = $_GET["date"];
+$to_date = $_GET["to_date"];
 $type = $_GET["type"];
 $seat = $_GET["seat"];
 $ticketprice = $_GET["price"];
@@ -145,7 +146,7 @@ if (!$ins2)
 }
 //$ins=($userid%2==0);
 if($ins&&$ins2){
-    echo "<p><H4>您已成功预订一张 出发日期为 $date  出发时间为 $go_time ，到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $ticketprice (含5元手续费) 。可选购返程票或前往订单查询。</H4></p>";
+    echo "<p><H4>您已成功预订一张 出发日期为 $date , 出发时间为 $go_time ，到达日期为 $to_date , 到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $ticketprice (含5元手续费) 。可选购返程票或前往订单查询。</H4></p>";
     echo "<script>alert('预订成功！')</script>";
 }
 else{

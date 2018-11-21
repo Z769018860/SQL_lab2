@@ -88,6 +88,10 @@ $ret3 = pg_query($dbconn, $get_last);
 $row = pg_fetch_row($ret3);
 $last_name = $row[0];
 
+function datadd($n, $date){
+    return date("Y-m-d", strtotime($date ." +$n day"));
+}
+
 echo "<table border=\"4\"><tr>";
 echo "<td>始发站</td>";
 echo "<td>$first_name</td>";
@@ -99,6 +103,8 @@ echo "<H4><p>列车 $trainid 的票价信息如下</p></H4>";
 echo "<table border=\"4\"><tr>";
 echo "<td>站名</td>" ;
 echo "<td>站号</td>" ;
+echo "<td>出发日期</td>";
+echo "<td>到达日期</td>";
 echo "<td>到达时间</td>" ;
 echo "<td>出发时间</td>";
 echo "<td>硬座</td>" ;
@@ -114,7 +120,21 @@ while ($row = pg_fetch_row($ret)){
 	////echo count($row);
 	$num = count($row);
 	echo "<tr>";
-	for ( $i = 1; $i < $num; $i = $i + 1 ){
+	for ( $i = 1; $i < 3; $i = $i + 1 ){
+		echo "<td>" . "$row[$i]" . "</td>";
+	}
+		echo "<td>" . "$train_date" . "</td>";
+//到达日期判断
+	if (!$row[3])
+		$to_date=$train_date;
+	else if (($row[3]-$row[4])<0)
+		$to_date=datadd(1,$train_date);
+	else
+		$to_date=$train_date;
+
+		echo "<td>" . "$to_date" . "</td>";
+
+	for ( $i = 3; $i < $num; $i = $i + 1 ){
 		echo "<td>" . "$row[$i]" . "</td>";
 	}
 	echo "</tr>";

@@ -116,6 +116,11 @@ $ret=pg_query($dbconn,$get_passby);
 $row_num = pg_num_rows($ret);
 $seat   = array("YZ"=>"硬座", "RZ"=>"软座", "YW1"=>"硬卧上", "YW2"=>"硬卧中", "YW3"=>"硬卧下", "RW1"=>"软卧上", "RW2"=>"软卧下");
 
+function datadd($n, $date){
+    return date("Y-m-d", strtotime($date ." +$n day"));
+}
+
+
 //$row_num=1;
 if (!$row_num)
 {
@@ -146,6 +151,7 @@ echo "<td>出发站</td>" ;
 echo "<td>出发日期</td>" ;
 echo "<td>出发时间</td>" ;
 echo "<td>到达站</td>" ;
+echo "<td>到达日期</td>" ;
 echo "<td>到达时间</td>";
 echo "<td>行程总时间（分钟）</td>";
 echo "<td>座位类型</td>" ;
@@ -404,11 +410,17 @@ $type=$row[6];
 $price=$row[7]+5;
 $leftnum=$row[8];
 
+	if (($got_time-$go_time)<0)
+		$to_date=datadd(1,$from_date);
+	else
+		$to_date=$from_date;
+
 	echo "<td>$row[0]</td>";
 	echo "<td>$from_station</td>";
 	echo "<td>$from_date</td>";
 	echo "<td>$go_time</td>";
 	echo "<td>$to_station</td>";
+	echo "<td>$to_date</td>";
 	echo "<td>$got_time</td>";
 	echo "<td><center>$during_time</center></td>";
 	echo "<td><center>$seat[$type]</center></td>";
@@ -430,8 +442,8 @@ echo "<td>出发站</td>" ;
 echo "<td>出发日期</td>" ;
 echo "<td>出发时间</td>" ;
 echo "<td>到达站</td>" ;
+echo "<td>到达日期</td>";
 echo "<td>到达时间</td>";
-echo "<td>行程总时间（分钟）</td>";
 echo "<td>座位类型</td>" ;
 echo "<td>价格</td>" ;
 echo "<td>余票</td>" ;
@@ -440,11 +452,12 @@ echo "<td>出发站</td>" ;
 echo "<td>出发日期</td>" ;
 echo "<td>出发时间</td>" ;
 echo "<td>到达站</td>" ;
+echo "<td>到达日期</td>";
 echo "<td>到达时间</td>";
-echo "<td>行程总时间（分钟）</td>";
 echo "<td>座位类型</td>" ;
 echo "<td>价格</td>" ;
 echo "<td>余票</td>" ;
+echo "<td>行程总时间（分钟）</td>";
 echo "</tr>";
 
 echo "</table>";

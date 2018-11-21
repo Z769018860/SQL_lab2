@@ -163,7 +163,13 @@ EOF;
 $del2=pg_query($dbconn, $seat_num);
 }
 if($del&&$del2){
-    echo "<p><H4>您已成功取消一张 出发日期为 $date  出发时间为 $go_time ，到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。</H4></p>";
+	//到达日期判断
+	if (($got_time-$to_time])<0)
+		$to_date=datadd(1,$date);
+	else
+		$to_date=$date;
+
+    echo "<p><H4>您已成功取消一张 出发日期为 $date , 出发时间为 $go_time ，到达日期为 $to_date , 到达时间为 $got_time , 从 $from_station 到 $to_station 的 $trainid 次列车的 $seat 票 一张，票价为 $price (含5元手续费) 。</H4></p>";
     echo "<script>alert('取消成功！')</script>";
 }
 else{
