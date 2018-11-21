@@ -432,6 +432,8 @@ echo "</tr>";
 }
 echo "</table>";
 
+
+
     echo "<br>";
 echo "<FONT color=#ff0000>";
 echo "<h4>换乘一次车次信息（两表对应换乘）</h4>";
@@ -459,6 +461,414 @@ echo "<td>价格</td>" ;
 echo "<td>余票</td>" ;
 echo "<td>行程总时间（分钟）</td>";
 echo "</tr>";
+
+
+$get_info=<<<EOF
+
+-- 输入出发地城市名、到达地城市名、出发日期和出发时间,查询两地之间换乘一次的列车和余票信息。
+
+-- 查询两地之间换乘一次的列车和余票信息的SQL语句如下，其中'北京'、'常州'、'2018-11-20'、'00:00'是可改变的参数。
+
+
+-- 先搜过北京的列车
+    WITH T0(T0_Name,T0_StNum) AS
+    (
+        SELECT Train.T_Name,Train.T_StNum
+        FROM Train,Station
+        WHERE Train.T_Station = Station.St_Name
+            AND St_City = '$from_city'
+    ),
+-- 剔除过北京不符合出发时间要求的列车
+    T1(T1_Name,T1_StNum) AS
+    (
+        SELECT T0.T0_Name,T0.T0_StNum
+        FROM T0,Train,Station 
+        WHERE Train.T_Name = T0.T0_Name
+            AND Train.T_Station = Station.St_Name
+            AND Station.St_City = '$from_city'
+            AND Train.T_StartTime > '$from_time'
+    ),
+-- 再搜过常州的列车
+    T2(T2_Name,T2_StNum) AS
+    (
+        SELECT Train.T_Name,Train.T_StNum
+        FROM Train,Station
+        WHERE Train.T_Station = Station.St_Name
+            AND St_City = '常州'
+    ),
+-- 搜过北京和过常州的列车
+    T3(T3_Name,T3_StNum) AS
+    (
+        SELECT T1.*
+        FROM T1
+        UNION
+        SELECT T2.*
+        FROM T2
+    ),
+-- 列出筛选后的过北京的列车、站名及站号
+    S1(Name1,St1,StNum1,Time1) AS
+    (
+        SELECT T3.T3_Name,Train.T_Station,T1.T1_StNum,Train.T_StartTime
+        FROM T1,T3,Train
+        WHERE T1.T1_Name = T3.T3_Name
+            AND Train.T_Name = T3.T3_Name
+            AND Train.T_StNum = T1.T1_StNum
+    ),
+-- 列出筛选后的过常州的列车、站名及站号、时间
+    S2(Name2,St2,StNum2,Time2) AS
+    (
+        SELECT T3.T3_Name,Train.T_Station,T2.T2_StNum,Train.T_ArrivalTime
+        FROM T2,T3,Train
+        WHERE T2.T2_Name = T3.T3_Name
+            AND Train.T_Name = T3.T3_Name
+            AND Train.T_StNum = T2.T2_StNum
+    ),
+-- 搜北京->常州存在换乘站的列车及其换乘站
+    -- 北京->终点站的所有
+    TEMP1(Name1,St0,St1,StNum1,City1,Time1) AS
+    (
+        SELECT Train.T_Name,S1.St1,Train.T_Station,Train.T_StNum,Station.St_City,Train.T_ArrivalTime
+        FROM Train,S1,Station
+        WHERE Train.T_Name = S1.Name1
+            AND Train.T_StNum > S1.StNum1
+            AND Station.St_Name = Train.T_Station
+            AND Station.St_City != '$from_city'
+    ),
+    -- 始发站->常州的所有
+    TEMP2(Name2,St0,St2,StNum2,City2,Time2) AS
+    (
+        SELECT Train.T_Name,S2.St2,Train.T_Station,Train.T_StNum,Station.St_City,Train.T_ArrivalTime
+        FROM Train,S2,Station
+        WHERE Train.T_Name = S2.Name2
+            AND Train.T_StNum < S2.StNum2
+            AND Station.St_Name = Train.T_Station
+            AND Train.T_StNum > 1
+            AND Station.St_City != '$to_city' 
+    ),
+    -- 所有同地换乘站及其换乘时间
+    T4(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime) AS 
+    (
+        SELECT TEMP1.Name1,TEMP1.St0,TEMP1.St1,TEMP1.Time1,TEMP2.Name2,TEMP2.St0,TEMP2.St2,TEMP2.Time2,
+        (CASE 
+            WHEN DATE_PART('hour', TEMP2.Time2::time - TEMP1.Time1::time) * 60 + DATE_PART('minute', TEMP2.Time2::time - TEMP1.Time1::time) > 0 
+                THEN DATE_PART('hour', TEMP2.Time2::time - TEMP1.Time1::time) * 60 + DATE_PART('minute', TEMP2.Time2::time - TEMP1.Time1::time)
+            ELSE DATE_PART('hour', '24:00'::time - TEMP1.Time1::time) * 60 + DATE_PART('minute', '24:00'::time - TEMP1.Time1::time) + 
+                 DATE_PART('hour', TEMP2.Time2::time - '00:00'::time) * 60 + DATE_PART('minute', TEMP2.Time2::time - '00:00'::time)
+            END
+            )AllTime
+        FROM TEMP1,TEMP2
+        WHERE TEMP1.City1 = TEMP2.City2
+        AND TEMP1.Name1 != TEMP2.Name2
+    ),
+-- 计算第一段旅程历时
+    TTime1(TT_Name,TT_St,AllTime) AS 
+    (
+        SELECT DISTINCT T4.Name1,T4.St1,
+        (CASE 
+            WHEN DATE_PART('hour', T4.Time1::time - S1.Time1::time) * 60 + DATE_PART('minute', T4.Time1::time - S1.Time1::time) > 0 
+                THEN DATE_PART('hour', T4.Time1::time - S1.Time1::time) * 60 + DATE_PART('minute', T4.Time1::time - S1.Time1::time)
+            ELSE DATE_PART('hour', '24:00'::time - S1.Time1::time) * 60 + DATE_PART('minute', '24:00'::time - S1.Time1::time) + 
+                 DATE_PART('hour', T4.Time1::time - '00:00'::time) * 60 + DATE_PART('minute', T4.Time1::time - '00:00'::time)
+            END
+            )AllTime 
+        FROM S1,T4
+        WHERE S1.Name1 = T4.Name1
+    ),
+-- 计算第二段旅程历时
+    TTime2(TT_Name,TT_St,AllTime) AS 
+    (
+        SELECT  T4.Name2,T4.St2,
+        (CASE 
+            WHEN DATE_PART('hour', S2.Time2::time - T4.Time2::time) * 60 + DATE_PART('minute', S2.Time2::time - T4.Time2::time) > 0 
+                THEN DATE_PART('hour', S2.Time2::time - T4.Time2::time) * 60 + DATE_PART('minute', S2.Time2::time - T4.Time2::time)
+            ELSE DATE_PART('hour', '24:00'::time - T4.Time2::time) * 60 + DATE_PART('minute', '24:00'::time - T4.Time2::time) + 
+                 DATE_PART('hour', S2.Time2::time - '00:00'::time) * 60 + DATE_PART('minute', S2.Time2::time - '00:00'::time)
+            END
+            )AllTime
+        FROM S2,T4
+        WHERE S2.Name2 = T4.Name2
+    ),
+-- 找出符合换乘时间要求的路线
+    T5(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime) AS
+    (
+        SELECT Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime
+        FROM T4
+        WHERE (St1 = St2 AND 60 <= AllTime AND AllTime <= 240)
+            OR (St1 != St2 AND 120 <= AllTime AND AllTime <= 240)
+    ),
+-- 计算第一段旅程票价
+    -- 搜出所有票价（未做减法）
+    T_Money1(Name1,St1,St2,YZ,RZ,YW1,YW2,YW3,RW1,RW2) AS
+    (
+        SELECT T5.Name1,T5.St01,T5.St1,Train.T_YZMoney,Train.T_RZMoney,Train.T_YW1Money,Train.T_YW2Money,Train.T_YW3Money,Train.T_RW1Money,Train.T_RW2Money
+        FROM Train,T5
+        WHERE Train.T_Name = T5.Name1
+            AND (Train.T_Station = T5.St01 OR Train.T_Station = T5.St1)
+    ),
+    -- 获得每次列车各种座位类型,做减法并获得每次列车各种座位的票价
+    T_Type1(Name1,St1,St2,Type1,Money1) AS
+    (
+        SELECT Name1,St1,St2,CAST('YZ' AS se_type),MAX(T_Money1.YZ)-MIN(T_Money1.YZ)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('RZ' AS se_type),MAX(T_Money1.RZ)-MIN(T_Money1.RZ)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('YW1' AS se_type),MAX(T_Money1.YW1)-MIN(T_Money1.YW1)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('YW2' AS se_type),MAX(T_Money1.YW2)-MIN(T_Money1.YW2)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('YW3' AS se_type),MAX(T_Money1.YW3)-MIN(T_Money1.YW3)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('RW1' AS se_type),MAX(T_Money1.RW1)-MIN(T_Money1.RW1)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('RW2' AS se_type),MAX(T_Money1.RW2)-MIN(T_Money1.RW2)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+    ),
+    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
+    T_MinMoney21(Name1,St1,St2,Type1,Money1) AS
+    (
+        SELECT Name1,St1,St2,Type1,MIN(Money1)
+        FROM T_Type1
+        WHERE Money1 <> 0
+        GROUP BY Name1,Type1,St1,St2
+    ),
+-- 计算第二段旅程票价
+    -- 搜出所有票价（未做减法）
+    T_Money2(Name2,St1,St2,YZ,RZ,YW1,YW2,YW3,RW1,RW2) AS
+    (
+        SELECT T5.Name2,T5.St02,T5.St2,Train.T_YZMoney,Train.T_RZMoney,Train.T_YW1Money,Train.T_YW2Money,Train.T_YW3Money,Train.T_RW1Money,Train.T_RW2Money
+        FROM Train,T5
+        WHERE Train.T_Name = T5.Name2
+            AND (Train.T_Station = T5.St02 OR Train.T_Station = T5.St2)
+    ),
+    -- 获得每次列车各种座位类型,做减法并获得每次列车各种座位的票价
+    T_Type2(Name2,St1,St2,Type2,Money2) AS
+    (
+        SELECT Name2,St1,St2,CAST('YZ' AS se_type),MAX(T_Money2.YZ)-MIN(T_Money2.YZ)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('RZ' AS se_type),MAX(T_Money2.RZ)-MIN(T_Money2.RZ)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('YW1' AS se_type),MAX(T_Money2.YW1)-MIN(T_Money2.YW1)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('YW2' AS se_type),MAX(T_Money2.YW2)-MIN(T_Money2.YW2)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('YW3' AS se_type),MAX(T_Money2.YW3)-MIN(T_Money2.YW3)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('RW1' AS se_type),MAX(T_Money2.RW1)-MIN(T_Money2.RW1)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('RW2' AS se_type),MAX(T_Money2.RW2)-MIN(T_Money2.RW2)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+    ),
+    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
+    T_MinMoney22(Name2,St1,St2,Type2,Money2) AS
+    (
+        SELECT Name2,St1,St2,Type2,MIN(Money2)
+        FROM T_Type2
+        WHERE Money2 <> 0
+        GROUP BY Name2,Type2,St1,St2
+    ),
+-- T5(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime)    
+-- 获得两次列车的最低票价所对应的座位类型、价格及其余票数，并将两最低价格相加
+    T_MinMoneyFinal(Name1,St11,St12,Type1,Name2,St21,St22,Type2,MoneySum) AS
+    (
+        SELECT T_MinMoney21.Name1,T_MinMoney21.St1,T_MinMoney21.St2,T_MinMoney21.Type1,T_MinMoney22.Name2,T_MinMoney22.St1,T_MinMoney22.St2,T_MinMoney22.Type2,T_MinMoney21.Money1 + T_MinMoney22.Money2
+        FROM T_MinMoney21,T_MinMoney22,T5
+        WHERE T_MinMoney21.Name1 = T5.Name1
+            AND T_MinMoney21.St1 = T5.St01
+            AND T_MinMoney21.St2 = T5.St1
+            AND T_MinMoney22.Name2 = T5.Name2
+            AND T_MinMoney22.St1 = T5.St02
+            AND T_MinMoney22.St2 = T5.St2
+    )
+    SELECT *
+    FROM T_MinMoneyFinal
+    ORDER BY MoneySum;
+EOF;
+$ret=pg_query($dbconn,$get_info);
+if (!$ret)
+	echo "AAAAAAAA!!!!";
+$line=0;
+while ($row=pg_fetch_row($ret))
+{
+$line++;
+if ($line>50)
+	break;
+$trainid=$row[0];
+//echo "$trainid";
+$type=$row[3];
+$from_st=$row[1];
+//echo "$from_st";
+$to_st=$row[2];
+//echo "$to_st";
+
+$get_stnum=<<<EOF
+			SELECT T_Stnum
+			From Train
+			WHERE T_Name='$trainid'
+			and T_Station='$from_st';
+EOF;
+$ret_st=pg_query($dbconn,$get_stnum);
+$row_st=pg_fetch_row($ret_st);
+$from_stnum=$row_st[0];
+
+$get_stnum=<<<EOF
+			SELECT T_Stnum
+			From Train
+			WHERE T_Name='$trainid'
+			and T_Station='$to_st';
+EOF;
+$ret_st=pg_query($dbconn,$get_stnum);
+$row_st=pg_fetch_row($ret_st);
+$to_stnum=$row_st[0];
+
+
+	for ($stnum=$from_stnum;$stnum<$to_stnum;$stnum=$stnum+1)
+	{
+$get_station=<<<EOF
+			SELECT T_Station
+			From Train
+			WHERE T_Name='$trainid'
+			and T_Stnum=$stnum;
+EOF;
+$ret_st=pg_query($dbconn,$get_station);
+$row_st=pg_fetch_row($ret_st);
+$station_temp=$row_st[0];
+
+	$get_seat = <<<EOF
+			SELECT Se_Num
+			FROM Seat
+			WHERE Se_Train = '$trainid'
+			and Se_date = '$from_date'
+			and Se_type = '$type'
+			and Se_Station = '$station_temp';
+EOF;
+$ret_gs=pg_query($dbconn,$get_seat);
+$row_gs_num=pg_num_rows($ret_gs);
+if (!$row_gs_num)
+{
+$get_train_station = <<<EOF
+				SELECT T_Station
+				From Train
+				Where T_Name = '$trainid'
+				and T_StNum = $stnum;
+EOF;
+$ret_st = pg_query($dbconn, $get_train_station);
+if (!$ret_st)
+	echo "FAILED123!!!!";
+$stnum_st=pg_fetch_row($ret_st);
+	$ins_seat = <<<EOF
+	INSERT INTO 
+
+    	Seat(Se_Train,Se_Station,Se_Date,Se_Type,Se_Num)
+
+	VALUES('$trainid', '$stnum_st[0]', '$from_date', '$type', 5);
+EOF;
+$ret_ins=pg_query($dbconn,$ins_seat);
+if (!$ret_ins)
+	echo "FAILED!!!!";
+
+}
+}
+$trainid=$row[4];
+$type=$row[7];
+$from_st=$row[6];
+$to_st=$row[5];
+
+$get_stnum=<<<EOF
+			SELECT T_Stnum
+			From Train
+			WHERE T_Name='$trainid'
+			and T_Station='$from_st';
+EOF;
+$ret_st=pg_query($dbconn,$get_stnum);
+$row_st=pg_fetch_row($ret_st);
+$from_stnum=$row_st[0];
+
+$get_stnum=<<<EOF
+			SELECT T_Stnum
+			From Train
+			WHERE T_Name='$trainid'
+			and T_Station='$to_st';
+EOF;
+$ret_st=pg_query($dbconn,$get_stnum);
+$row_st=pg_fetch_row($ret_st);
+$to_stnum=$row_st[0];
+
+
+	for ($stnum=$from_stnum;$stnum<$to_stnum;$stnum=$stnum+1)
+	{
+$get_station=<<<EOF
+			SELECT T_Station
+			From Train
+			WHERE T_Name='$trainid'
+			and T_Stnum=$stnum;
+EOF;
+$ret_st=pg_query($dbconn,$get_station);
+$row_st=pg_fetch_row($ret_st);
+$station_temp=$row_st[0];
+
+	$get_seat = <<<EOF
+			SELECT Se_Num
+			FROM Seat
+			WHERE Se_Train = '$trainid'
+			and Se_date = '$from_date'
+			and Se_type = '$type'
+			and Se_Station = '$station_temp';
+EOF;
+$ret_gs=pg_query($dbconn,$get_seat);
+$row_gs_num=pg_num_rows($ret_gs);
+if (!$row_gs_num)
+{
+$get_train_station = <<<EOF
+				SELECT T_Station
+				From Train
+				Where T_Name = '$trainid'
+				and T_StNum = $stnum;
+EOF;
+$ret_st = pg_query($dbconn, $get_train_station);
+if (!$ret_st)
+	echo "FAILED123!!!!";
+$stnum_st=pg_fetch_row($ret_st);
+	$ins_seat = <<<EOF
+	INSERT INTO 
+
+    	Seat(Se_Train,Se_Station,Se_Date,Se_Type,Se_Num)
+
+	VALUES('$trainid', '$stnum_st[0]', '$from_date', '$type', 5);
+EOF;
+$ret_ins=pg_query($dbconn,$ins_seat);
+if (!$ret_ins)
+	echo "FAILED!!!!";
+
+}
+}
+
+}
 
 echo "</table>";
 

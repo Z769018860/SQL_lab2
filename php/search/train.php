@@ -33,7 +33,8 @@ echo "<H3>尊敬的用户 $username ，您查询的车次 $trainid 信息如下�
     echo "<script>alert('哦豁，数据库连接成功！')</script>";
 
 $sql = <<<EOF
-	SELECT * FROM Train WHERE T_Name = '$trainid';
+	SELECT * FROM Train WHERE T_Name = '$trainid'
+	ORDER BY T_StNum;
 EOF;
 $ret = pg_query($dbconn, $sql);
 $row_num = pg_num_rows($ret);
@@ -164,7 +165,8 @@ $all_type = array("YZ", "RZ", "YW1", "YW2", "YW3", "RW1", "RW2");
 $get_train_station = <<<EOF
 				SELECT T_Station
 				From Train
-				Where T_Name = '$trainid';
+				Where T_Name = '$trainid'
+				ORDER BY T_StNum;
 EOF;
 $ret_t = pg_query($dbconn, $get_train_station);
 while ($row = pg_fetch_row($ret_t)){
