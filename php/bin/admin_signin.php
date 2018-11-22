@@ -40,7 +40,8 @@
     echo "<script>alert('哦豁，数据库连接成功！')</script>";
 
 $booknum = <<<EOF
-	SELECT COUNT(*), SUM(B_Money) FROM Book;
+	SELECT COUNT(*), SUM(B_Money) FROM Book
+				WHERE B_status='uncancelled';
 EOF;
 $ret = pg_query( $dbconn, $booknum );
 if (!$ret){
@@ -59,6 +60,7 @@ echo "<p><b>当前总票价：$money_num .</b></p>";
 $select_hot_train = <<<EOF
 				SELECT B_Train, COUNT(B_Train) 
 				FROM Book
+				WHERE B_status='uncancelled'
 				GROUP BY B_Train ORDER BY  COUNT(B_Train) DESC;
 EOF;
 $ret = pg_query( $dbconn, $select_hot_train );

@@ -50,6 +50,11 @@ update-2018.11.21 12:00
 
 5-2pass！美工优化完成！背景图、标题、按钮美化完成！背景图的含义就是数据库打爆我的狗头！
 
+
+update-2018.11.21 15:00
+
+finish all.
+
 ## 文件架构
 ```
 SQL_lab2
@@ -82,7 +87,7 @@ SQL_lab2
 │  │   ├─book
 │  │   ├─train_search
 │  │   └─dist_search
-│  ├─ign
+│  ├─sign
 │  │   ├─sign_admin
 │  │   ├─sign_in
 │  │   ├─sign_random
