@@ -5,7 +5,7 @@
     <title>果壳12306-两地间车次查询结果</title>
 </head>
 
-<body>
+<body background="../image/123.jpg">
 	<center>
 	<p><H1 id="h1"> 欢迎访问果壳12306网站</H1></p>
             <a href="../index.php"><img src="../image/ad.png" /></a>
@@ -705,7 +705,7 @@ $get_info=<<<EOF
             AND T_MinMoney22.St1 = T5.St02
             AND T_MinMoney22.St2 = T5.St2
     )
-    SELECT *
+    SELECT DISTINCT *
     FROM T_MinMoneyFinal
     ORDER BY MoneySum;
 EOF;
@@ -869,17 +869,481 @@ if (!$ret_ins)
 }
 
 }
+/*
+$get_order=<<<EOF
+-- 输入出发地城市名、到达地城市名、出发日期和出发时间,查询两地之间换乘一次的列车和余票信息。
 
+-- 查询两地之间换乘一次的列车和余票信息的SQL语句如下，其中'北京'、'常州'、'2018-11-20'、'00:00'是可改变的参数。
+
+
+-- 先搜过北京的列车
+    WITH T0(T0_Name,T0_StNum) AS
+    (
+        SELECT Train.T_Name,Train.T_StNum
+        FROM Train,Station
+        WHERE Train.T_Station = Station.St_Name
+            AND St_City = '$from_city'
+    ),
+-- 剔除过北京不符合出发时间要求的列车
+    T1(T1_Name,T1_StNum) AS
+    (
+        SELECT T0.T0_Name,T0.T0_StNum
+        FROM T0,Train,Station 
+        WHERE Train.T_Name = T0.T0_Name
+            AND Train.T_Station = Station.St_Name
+            AND Station.St_City = '$from_city'
+            AND Train.T_StartTime > '$from_time'
+    ),
+-- 再搜过常州的列车
+    T2(T2_Name,T2_StNum) AS
+    (
+        SELECT Train.T_Name,Train.T_StNum
+        FROM Train,Station
+        WHERE Train.T_Station = Station.St_Name
+            AND St_City = '$to_city'
+    ),
+-- 搜过北京和过常州的列车
+    T3(T3_Name,T3_StNum) AS
+    (
+        SELECT T1.*
+        FROM T1
+        UNION
+        SELECT T2.*
+        FROM T2
+    ),
+-- 列出筛选后的过北京的列车、站名及站号
+    S1(Name1,St1,StNum1,Time1) AS
+    (
+        SELECT T3.T3_Name,Train.T_Station,T1.T1_StNum,Train.T_StartTime
+        FROM T1,T3,Train
+        WHERE T1.T1_Name = T3.T3_Name
+            AND Train.T_Name = T3.T3_Name
+            AND Train.T_StNum = T1.T1_StNum
+    ),
+-- 列出筛选后的过常州的列车、站名及站号、时间
+    S2(Name2,St2,StNum2,Time2) AS
+    (
+        SELECT T3.T3_Name,Train.T_Station,T2.T2_StNum,Train.T_ArrivalTime
+        FROM T2,T3,Train
+        WHERE T2.T2_Name = T3.T3_Name
+            AND Train.T_Name = T3.T3_Name
+            AND Train.T_StNum = T2.T2_StNum
+    ),
+-- 搜北京->常州存在换乘站的列车及其换乘站
+    -- 北京->终点站的所有
+    TEMP1(Name1,St0,St1,StNum1,City1,Time1) AS
+    (
+        SELECT Train.T_Name,S1.St1,Train.T_Station,Train.T_StNum,Station.St_City,Train.T_ArrivalTime
+        FROM Train,S1,Station
+        WHERE Train.T_Name = S1.Name1
+            AND Train.T_StNum > S1.StNum1
+            AND Station.St_Name = Train.T_Station
+            AND Station.St_City != '$from_city'
+    ),
+    -- 始发站->常州的所有
+    TEMP2(Name2,St0,St2,StNum2,City2,Time2) AS
+    (
+        SELECT Train.T_Name,S2.St2,Train.T_Station,Train.T_StNum,Station.St_City,Train.T_ArrivalTime
+        FROM Train,S2,Station
+        WHERE Train.T_Name = S2.Name2
+            AND Train.T_StNum < S2.StNum2
+            AND Station.St_Name = Train.T_Station
+            AND Train.T_StNum > 1
+            AND Station.St_City != '$to_city' 
+    ),
+    -- 所有同地换乘站及其换乘时间
+    T4(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime) AS 
+    (
+        SELECT TEMP1.Name1,TEMP1.St0,TEMP1.St1,TEMP1.Time1,TEMP2.Name2,TEMP2.St0,TEMP2.St2,TEMP2.Time2,
+        (CASE 
+            WHEN DATE_PART('hour', TEMP2.Time2::time - TEMP1.Time1::time) * 60 + DATE_PART('minute', TEMP2.Time2::time - TEMP1.Time1::time) > 0 
+                THEN DATE_PART('hour', TEMP2.Time2::time - TEMP1.Time1::time) * 60 + DATE_PART('minute', TEMP2.Time2::time - TEMP1.Time1::time)
+            ELSE DATE_PART('hour', '24:00'::time - TEMP1.Time1::time) * 60 + DATE_PART('minute', '24:00'::time - TEMP1.Time1::time) + 
+                 DATE_PART('hour', TEMP2.Time2::time - '00:00'::time) * 60 + DATE_PART('minute', TEMP2.Time2::time - '00:00'::time)
+            END
+            )AllTime
+        FROM TEMP1,TEMP2
+        WHERE TEMP1.City1 = TEMP2.City2
+        AND TEMP1.Name1 != TEMP2.Name2
+    ),
+-- 计算第一段旅程历时
+    TTime1(TT_Name,St1,St2,AllTime) AS 
+    (
+        SELECT DISTINCT T4.Name1,T4.St01,T4.St1,
+        (CASE 
+            WHEN DATE_PART('hour', T4.Time1::time - S1.Time1::time) * 60 + DATE_PART('minute', T4.Time1::time - S1.Time1::time) > 0 
+                THEN DATE_PART('hour', T4.Time1::time - S1.Time1::time) * 60 + DATE_PART('minute', T4.Time1::time - S1.Time1::time)
+            ELSE DATE_PART('hour', '24:00'::time - S1.Time1::time) * 60 + DATE_PART('minute', '24:00'::time - S1.Time1::time) + 
+                 DATE_PART('hour', T4.Time1::time - '00:00'::time) * 60 + DATE_PART('minute', T4.Time1::time - '00:00'::time)
+            END
+            )AllTime 
+        FROM S1,T4
+        WHERE S1.Name1 = T4.Name1
+    ),
+-- 计算第二段旅程历时
+    TTime2(TT_Name,St1,St2,AllTime) AS 
+    (
+        SELECT  T4.Name2,T4.St02,T4.St2,
+        (CASE 
+            WHEN DATE_PART('hour', S2.Time2::time - T4.Time2::time) * 60 + DATE_PART('minute', S2.Time2::time - T4.Time2::time) > 0 
+                THEN DATE_PART('hour', S2.Time2::time - T4.Time2::time) * 60 + DATE_PART('minute', S2.Time2::time - T4.Time2::time)
+            ELSE DATE_PART('hour', '24:00'::time - T4.Time2::time) * 60 + DATE_PART('minute', '24:00'::time - T4.Time2::time) + 
+                 DATE_PART('hour', S2.Time2::time - '00:00'::time) * 60 + DATE_PART('minute', S2.Time2::time - '00:00'::time)
+            END
+            )AllTime
+        FROM S2,T4
+        WHERE S2.Name2 = T4.Name2
+    ),
+-- 找出符合换乘时间要求的路线
+    T5(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime) AS
+    (
+        SELECT Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime
+        FROM T4
+        WHERE (St1 = St2 AND 60 <= AllTime AND AllTime <= 240)
+            OR (St1 != St2 AND 120 <= AllTime AND AllTime <= 240)
+    ),
+-- 计算第一段旅程票价
+    -- 搜出所有票价（未做减法）
+    T_Money1(Name1,St1,St2,YZ,RZ,YW1,YW2,YW3,RW1,RW2) AS
+    (
+        SELECT T5.Name1,T5.St01,T5.St1,Train.T_YZMoney,Train.T_RZMoney,Train.T_YW1Money,Train.T_YW2Money,Train.T_YW3Money,Train.T_RW1Money,Train.T_RW2Money
+        FROM Train,T5
+        WHERE Train.T_Name = T5.Name1
+            AND (Train.T_Station = T5.St01 OR Train.T_Station = T5.St1)
+    ),
+    -- 获得每次列车各种座位类型,做减法并获得每次列车各种座位的票价
+    T_Type1(Name1,St1,St2,Type1,Money1) AS
+    (
+        SELECT Name1,St1,St2,CAST('YZ' AS se_type),MAX(T_Money1.YZ)-MIN(T_Money1.YZ)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('RZ' AS se_type),MAX(T_Money1.RZ)-MIN(T_Money1.RZ)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('YW1' AS se_type),MAX(T_Money1.YW1)-MIN(T_Money1.YW1)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('YW2' AS se_type),MAX(T_Money1.YW2)-MIN(T_Money1.YW2)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('YW3' AS se_type),MAX(T_Money1.YW3)-MIN(T_Money1.YW3)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('RW1' AS se_type),MAX(T_Money1.RW1)-MIN(T_Money1.RW1)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+        UNION
+        SELECT Name1,St1,St2,CAST('RW2' AS se_type),MAX(T_Money1.RW2)-MIN(T_Money1.RW2)
+        FROM T_Money1
+        GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
+    ),
+    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
+    T_MinMoney21(Name1,St1,St2,Type1,Money1) AS
+    (
+        SELECT Name1,St1,St2,Type1,MIN(Money1)
+        FROM T_Type1
+        WHERE Money1 <> 0
+        GROUP BY Name1,Type1,St1,St2
+    ),
+-- 计算第二段旅程票价
+    -- 搜出所有票价（未做减法）
+    T_Money2(Name2,St1,St2,YZ,RZ,YW1,YW2,YW3,RW1,RW2) AS
+    (
+        SELECT T5.Name2,T5.St02,T5.St2,Train.T_YZMoney,Train.T_RZMoney,Train.T_YW1Money,Train.T_YW2Money,Train.T_YW3Money,Train.T_RW1Money,Train.T_RW2Money
+        FROM Train,T5
+        WHERE Train.T_Name = T5.Name2
+            AND (Train.T_Station = T5.St02 OR Train.T_Station = T5.St2)
+    ),
+    -- 获得每次列车各种座位类型,做减法并获得每次列车各种座位的票价
+    T_Type2(Name2,St1,St2,Type2,Money2) AS
+    (
+        SELECT Name2,St1,St2,CAST('YZ' AS se_type),MAX(T_Money2.YZ)-MIN(T_Money2.YZ)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('RZ' AS se_type),MAX(T_Money2.RZ)-MIN(T_Money2.RZ)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('YW1' AS se_type),MAX(T_Money2.YW1)-MIN(T_Money2.YW1)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('YW2' AS se_type),MAX(T_Money2.YW2)-MIN(T_Money2.YW2)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('YW3' AS se_type),MAX(T_Money2.YW3)-MIN(T_Money2.YW3)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('RW1' AS se_type),MAX(T_Money2.RW1)-MIN(T_Money2.RW1)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+        UNION
+        SELECT Name2,St1,St2,CAST('RW2' AS se_type),MAX(T_Money2.RW2)-MIN(T_Money2.RW2)
+        FROM T_Money2
+        GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
+    ),
+    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
+    T_MinMoney22(Name2,St1,St2,Type2,Money2) AS
+    (
+        SELECT Name2,St1,St2,Type2,MIN(Money2)
+        FROM T_Type2
+        WHERE Money2 <> 0
+        GROUP BY Name2,Type2,St1,St2
+    ),    
+-- 获得两次列车的最低票价所对应的座位类型、价格及其余票数，并将两最低价格相加
+    T_MinMoneyFinal(Name1,St11,St12,Time1,Name2,St21,St22,Time2,AllTime,MoneySum) AS
+    (
+        SELECT T_MinMoney21.Name1,T_MinMoney21.St1,T_MinMoney21.St2,T5.Time1,T_MinMoney22.Name2,T_MinMoney22.St1,T_MinMoney22.St2,T5.Time2,T5.AllTime,T_MinMoney21.Money1 + T_MinMoney22.Money2
+        FROM T_MinMoney21,T_MinMoney22,T5
+        WHERE T_MinMoney21.Name1 = T5.Name1
+            AND T_MinMoney21.St1 = T5.St01
+            AND T_MinMoney21.St2 = T5.St1
+            AND T_MinMoney22.Name2 = T5.Name2
+            AND T_MinMoney22.St1 = T5.St02
+            AND T_MinMoney22.St2 = T5.St2
+    ),
+    T6(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime,MoneySum) AS
+    (
+        SELECT *
+        FROM T_MinMoneyFinal
+        ORDER BY MoneySum
+        LIMIT 50
+    ),
+-- T5(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime)    
+-----------------------------------------------------------------------------------------------------------------
+-- 计算第一段旅程余票
+    -- 开始算余票
+    TS_Num11(train,St1,St2,fromNum) AS
+    (
+				SELECT Train.T_Name,T6.St01,T6.St1,Train.T_StNum
+                From Train,T6
+                WHERE Train.T_Name = T6.Name1
+                AND Train.T_Station = T6.St01
+    ),
+    TS_Num21(train,St1,St2,toNum) AS
+    (
+				SELECT Train.T_Name,T6.St01,T6.St1,Train.T_StNum
+                From Train,T6
+                WHERE Train.T_Name = T6.Name1
+                AND Train.T_Station = T6.St1
+    ),
+    TS_Num1(train,St1,St2,fromNum,toNum) AS
+    (
+                SELECT TS_Num11.train,TS_Num11.St1,TS_Num11.St2,TS_Num11.fromNum,TS_Num21.toNum
+                FROM TS_Num11,TS_Num21
+                WHERE TS_Num11.train = TS_Num21.train
+                    AND TS_Num21.St1 = TS_Num11.St1
+                    AND TS_Num21.St2 = TS_Num11.St2
+    ),
+    -- 得到每次列车的座位类型及其余票
+    TS_Seat1(Train1,St1,St2,Type1,Num1) AS
+    (
+				SELECT TS_Num1.train,TS_Num1.St1,TS_Num1.St2,Seat.Se_Type,MIN(Seat.Se_Num)
+				FROM Train,Seat,TS_Num1
+				WHERE Train.T_Name = TS_Num1.train
+    				AND Seat.Se_Train = Train.T_Name
+    				AND Seat.Se_Date = '$from_date'
+    				AND Seat.Se_Station = Train.T_Station
+    				AND TS_Num1.fromNum < Train.T_StNum
+                    AND Train.T_StNum > TS_Num1.toNum-1
+                GROUP BY TS_Num1.train,TS_Num1.St1,TS_Num1.St2,Seat.Se_Type
+    ),
+    -- 得到每次列车**有余票**的座位类型、价格及其余票数
+    TS_leftseat1(Train1,St1,St2,Type1,Money1,Num1) AS
+    (
+				SELECT TS_Seat1.Train1,TS_Seat1.St1,TS_Seat1.St2,TS_Seat1.Type1,T_Type1.Money1,TS_Seat1.Num1
+				FROM TS_Seat1,T_Type1
+				WHERE TS_Seat1.Num1 <> 0
+                    AND T_Type1.Money1 <> 0
+                    AND T_Type1.Name1 = TS_Seat1.Train1
+                    AND T_Type1.Type1 = TS_Seat1.Type1
+    ),
+    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
+    T_MinMoney211(Name1,St1,St2,Type1,Money1,Num1) AS
+    (
+        SELECT Train1,St1,St2,Type1,MIN(Money1),Num1
+        FROM TS_leftseat1
+        GROUP BY Train1,Type1,Num1,St1,St2
+    ),
+ -- 计算第二段旅程余票
+    -- 开始算余票
+    TS_Num12(train,St1,St2,fromNum) AS
+    (
+				SELECT Train.T_Name,T6.St02,T6.St2,Train.T_StNum
+                From Train,T6
+                WHERE Train.T_Name = T6.Name2
+                AND Train.T_Station = T6.St2
+    ),
+    TS_Num22(train,St1,St2,toNum) AS
+    (
+				SELECT Train.T_Name,T6.St02,T6.St2,Train.T_StNum
+                From Train,T6
+                WHERE Train.T_Name = T6.Name2
+                AND Train.T_Station = T6.St02
+    ),
+    TS_Num2(train,St1,St2,fromNum,toNum) AS
+    (
+                SELECT TS_Num12.train,TS_Num12.St1,TS_Num12.St2,TS_Num12.fromNum,TS_Num22.toNum
+                FROM TS_Num12,TS_Num22
+                WHERE TS_Num12.train = TS_Num22.train
+                    AND TS_Num22.St1 = TS_Num12.St1
+                    AND TS_Num22.St2 = TS_Num12.St2
+    ),          
+    -- 得到每次列车的座位类型及其余票
+    TS_Seat2(Train2,St1,St2,Type2,Num2) AS
+    (
+				SELECT TS_Num2.train,TS_Num2.St1,TS_Num2.St2,Seat.Se_Type,MIN(Seat.Se_Num)
+				FROM Train,Seat,TS_Num2,T5
+				WHERE Train.T_Name = TS_Num2.train
+    				AND Seat.Se_Train = Train.T_Name
+    				AND Seat.Se_Date = '$from_date'
+    				AND Seat.Se_Station = Train.T_Station
+    				AND TS_Num2.fromNum < Train.T_StNum
+                    AND Train.T_StNum > TS_Num2.toNum-1
+                GROUP BY TS_Num2.train,TS_Num2.St1,TS_Num2.St2,Seat.Se_Type
+    ),
+    -- 得到每次列车**有余票**的座位类型、价格及其余票数
+    TS_leftseat2(Train2,St1,St2,Type2,Money2,Num2) AS
+    (
+				SELECT TS_Seat2.Train2,TS_Seat2.St1,TS_Seat2.St2,TS_Seat2.Type2,T_Type2.Money2,TS_Seat2.Num2
+				FROM TS_Seat2,T_Type2
+				WHERE TS_Seat2.Num2 <> 0
+                    AND T_Type2.Money2 <> 0 
+                    AND T_Type2.Name2 = TS_Seat2.Train2
+                    AND T_Type2.Type2 = TS_Seat2.Type2
+    ),
+    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
+    T_MinMoney221(Name2,St1,St2,Type2,Money2,Num2) AS
+    (
+        SELECT Train2,St1,St2,Type2,MIN(Money2),Num2
+        FROM TS_leftseat2 
+        GROUP BY Train2,Type2,Num2,St1,St2
+    ),
+-- 获得两次列车的最低票价所对应的座位类型、价格及其余票数，并将两最低价格相加(附加时间)
+    T_MinMoneyFinal1(Name1,St11,Time11,St12,T12,Type1,Money1,Num1,Name2,St21,Time21,St22,Time22,Type2,Money2,Num2,MoneySum) AS
+    (
+        SELECT  T_MinMoney211.Name1,T_MinMoney211.St1,TEMP1.Time1,T_MinMoney211.St2,T6.Time1,T_MinMoney211.Type1,T_MinMoney211.Money1,T_MinMoney211.Num1,
+               T_MinMoney221.Name2,T_MinMoney221.St1,TEMP2.Time2,T_MinMoney221.St2,T6.Time2,T_MinMoney221.Type2,T_MinMoney221.Money2,T_MinMoney221.Num2,
+               T_MinMoney211.Money1 + T_MinMoney221.Money2
+        FROM T_MinMoney211,T_MinMoney221,T6,TEMP1,TEMP2
+        WHERE T_MinMoney211.Name1 = T6.Name1
+            AND T_MinMoney211.St1 = T6.St01
+            AND T_MinMoney211.St2 = T6.St1
+            AND T_MinMoney221.Name2 = T6.Name2
+            AND T_MinMoney221.St1 = T6.St02
+            AND T_MinMoney221.St2 = T6.St2
+            AND TEMP1.Name1 = T6.Name1
+            AND TEMP1.St0 = T6.St01
+            AND TEMP1.St1 = T6.St1
+            AND TEMP2.Name2 = T6.Name2
+            AND TEMP2.St0 = T6.St02
+            AND TEMP2.St2 = T6.St2
+    )
+    SELECT DISTINCT T_MinMoneyFinal1.*,TTime1.AllTime+TTime2.AllTime+T6.AllTime
+    FROM  T_MinMoneyFinal1,TTime1,TTime2,T6
+    WHERE TTime1.TT_Name = T_MinMoneyFinal1.Name1
+        AND TTime2.TT_Name = T_MinMoneyFinal1.Name2
+        AND TTime1.St1 = T_MinMoneyFinal1.St11
+        AND TTime1.St2 = T_MinMoneyFinal1.St12
+        AND TTime2.St1 = T_MinMoneyFinal1.St21
+        AND TTime2.St2 = T_MinMoneyFinal1.St22
+        AND T_MinMoneyFinal1.Name1 = T6.Name1
+        AND T_MinMoneyFinal1.St11 = T6.St01
+        AND T_MinMoneyFinal1.Name2 = T6.St1
+        AND T_MinMoneyFinal1.Name2 = T6.Name2
+        AND T_MinMoneyFinal1.St21 = T6.St02
+        AND T_MinMoneyFinal1.St22 = T6.St2 
+    ORDER BY MoneySum,TTime1.AllTime+TTime2.AllTime+T6.AllTime,T_MinMoneyFinal1.Time11;
+EOF;
+$ret=pg_query($dbconn,$get_order);
+if (!$ret)
+	echo "AAAAAAAAAAAAAAAAA!!!";
+else*/
+{
+	$line=0;
+	while ($row=pg_fetch_row($ret))
+{
+	echo "<tr>";
+$line++;
+if ($line>10)
+	break;
+$trainid=$row[0];
+$from_station=$row[1];
+$go_time=$row[2];
+$to_station=$row[3];
+$got_time=$row[4];
+//$during_time=$row[5];
+$type=$row[5];
+$price=$row[6]+5;
+$leftnum=$row[7];
+
+	if (($got_time-$go_time)<0)
+		$to_date=datadd(1,$from_date);
+	else
+		$to_date=$from_date;
+
+	echo "<td>$row[0]</td>";
+	echo "<td>$from_station</td>";
+	echo "<td>$from_date</td>";
+	echo "<td>$go_time</td>";
+	echo "<td>$to_station</td>";
+	echo "<td>$to_date</td>";
+	echo "<td>$got_time</td>";
+	//echo "<td><center>$during_time</center></td>";
+	echo "<td><center>$seat[$type]</center></td>";
+	echo "<td>$row[6]</td>";
+	echo "<td><a href=\"../book/booking.php?date=$from_date&trainid=$trainid&type=$type&price=$price&from_station=$from_station&to_station=$to_station\">$leftnum</a></td>";
+
+$trainid=$row[8];
+$from_station=$row[9];
+$go_time=$row[10];
+$to_station=$row[11];
+$got_time=$row[12];
+//$during_time=$row[5];
+$type=$row[13];
+$price=$row[14]+5;
+$leftnum=$row[15];
+$during_time=$row[16];
+
+	echo "<td>$trainid</td>";
+	echo "<td>$from_station</td>";
+	echo "<td>$from_date</td>";
+	echo "<td>$go_time</td>";
+	echo "<td>$to_station</td>";
+	echo "<td>$to_date</td>";
+	echo "<td>$got_time</td>";
+	//echo "<td><center>$during_time</center></td>";
+	echo "<td><center>$seat[$type]</center></td>";
+	echo "<td>$row[14]</td>";
+	echo "<td><a href=\"../book/booking.php?date=$from_date&trainid=$trainid&type=$type&price=$price&from_station=$from_station&to_station=$to_station\">$leftnum</a></td>";
+	echo "<td><center>$during_time</center></td>";
+
+	
+echo "</tr>";
+
+}
+}
 echo "</table>";
 
 
     echo "<br>";
-	echo "<div><p>
-             <a href = \"../serve/dist_search.php\"><input type=\"button\" value = \"返回车次查询\" onclick=\"location.href='./serve/dist_search.php'\"> </a></p></div>";
-	echo "<div><p>
-             <a href = \"../bin/user_signin.php\"><input type=\"button\" value = \"返回服务选择\" onclick=\"location.href='./serve/book.php'\"> </a></p></div>";
-    echo "<div><p>
-             <a href = \"../index.php\"><input type=\"button\" value = \"退出登录\" onclick=\"location.href=''\"></a> </p></div>";
+	echo "<div id=\"wrap\">
+        <a class=\"three-dee-block\" onclick=\"location.href='../serve/dist_search.php'\">返回车次查询</a>
+   </div> ";
+	echo "<div id=\"wrap\">
+        <a class=\"three-dee-block\" onclick=\"location.href='../bin/user_signin.php'\">返回服务选择</a>
+   </div> ";
+	echo "<div id=\"wrap\">
+        <a class=\"three-dee-block\" onclick=\"location.href='../index.php'\">退出登录</a>
+   </div> ";
 echo "</center>";
 pg_close($dbconn);
 
@@ -887,6 +1351,146 @@ pg_close($dbconn);
 
 
 ?>
+   <style type="text/css">
+
+* {
+    margin: 10;
+    padding: 10;
+}
+
+@font-face {
+  font-family:League-Gothic;
+  src:url("http://static.tumblr.com/unxjxmf/8oKm0yq2w/league-gothic.otf") format("opentype");
+}
+body{
+    -webkit-transition: background-color 1s ease;
+    -moz-transition: background-color 1s ease;
+    -ms-transition: background-color 1s ease;
+    -o-transition: background-color 1s ease;
+    transition: background-color 1s ease;
+}
+
+#wrap      {width:80%;margin:auto;padding:20px 0px;}
+/**
+ * =======================================================
+ * START CSS3 BUTTONS
+ * To provide a convenient update, start a new button from top,
+ * not from bottom
+ * =======================================================
+ */
+
+
+/* 3D block button w/ hover transition */
+/*     Would be much cleaner with a little .less */
+
+a.three-dee-block {
+    background: rgb(255,255,255); 
+    background: -moz-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(255,255,255,0)), color-stop(80%,rgba(215,215,215,0.2)), color-stop(100%,rgba(200,200,200,0.4))); 
+    background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: -o-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top; 
+    background: -ms-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top; 
+    box-shadow: 1px 1px 0 rgb(190,190,190),
+        2px 2px 0 rgb(180,180,180),
+        3px 3px 0 rgb(170,170,170),
+        4px 4px 0 rgb(160,160,160),
+        5px 5px 0 rgb(150,150,150),
+        3px 6px 1px rgba(0,0,0,0.1),
+        0 0 5px rgba(0,0,0,0.1),
+        0 1px 3px rgba(0,0,0,0.3),
+        1px 3px 5px rgba(0,0,0,0.2),
+        2px 5px 10px rgba(0,0,0,0.25),
+        5px 10px 10px rgba(0,0,0,0.2),
+        10px 20px 20px rgba(0,0,0,0.15);
+    color: rgba(70,70,70,0.6);
+    cursor: pointer;
+    display: block;
+    font: normal 1em/1.1em arial, sans-serif;
+    margin: 0 auto;
+    padding: 0.3em 0.5em;
+    -webkit-transition: all 300ms ease-out;
+    -moz-transition: all 300ms ease-out;
+    -ms-transition: all 300ms ease-out;
+    -o-transition: all 300ms ease-out;
+    transition: all 300ms ease-out;
+    width: 8em;
+}
+
+a.three-dee-block:hover {
+    background: rgb(235,235,235); 
+    background: -moz-radial-gradient(center, ellipse cover, rgba(205,255,205,0.5) 0%, rgba(255,255,255,0) 70%), -moz-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%,rgba(205,255,205,0.5)), color-stop(70%,rgba(255,255,255,0))), -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(255,255,255,0)), color-stop(80%,rgba(215,215,215,0.2)), color-stop(100%,rgba(200,200,200,0.4))); 
+    background: -webkit-radial-gradient(center, ellipse cover, rgba(205,255,205,0.5) 0%, rgba(255,255,255,0) 70%), -webkit-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: -o-radial-gradient(center, ellipse cover, rgba(205,255,205,0.5) 0%, rgba(255,255,255,0) 70%), -o-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top; 
+    background: -ms-radial-gradient(center, ellipse cover, rgba(205,255,205,0.5) 0%, rgba(255,255,255,0) 70%), -ms-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: radial-gradient(center, ellipse cover, rgba(205,255,205,0.5) 0%, rgba(255,255,255,0) 70%), linear-gradient(top, rgba(255,255,255,0) 0%, rgba(215,215,215,0.2) 80%, rgba(200,200,200,0.4) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top; 
+    color: rgba(30,30,30,0.7);
+    
+    -moz-transform: translate(0px, -1px);
+    -webkit-transform: translate(0px, -1px);
+    -o-transform: translate(0px, -1px);
+    -ms-transform: translate(0px, -1px);
+    transform: translate(0px, -1px);
+    
+    -webkit-transition: all 300ms ease-out;
+    -moz-transition: all 300ms ease-out;
+    -ms-transition: all 300ms ease-out;
+    -o-transition: all 300ms ease-out;
+    transition: all 300ms ease-out;
+}
+
+a.three-dee-block:active {
+    background: rgb(255,255,255); 
+    background: -moz-linear-gradient(bottom, rgba(255,255,255,0) 0%, rgba(200,200,200,0.3) 80%, rgba(185,185,185,0.5) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: -webkit-gradient(linear, left bottom, left top, color-stop(0%,rgba(255,255,255,0)), color-stop(80%,rgba(200,200,200,0.3)), color-stop(100%,rgba(185,185,185,0.5))); 
+    background: -webkit-linear-gradient(bottom, rgba(255,255,255,0) 0%, rgba(200,200,200,0.3) 80%, rgba(185,185,185,0.5) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: -o-linear-gradient(bottom, rgba(255,255,255,0) 0%, rgba(200,200,200,0.3) 80%, rgba(185,185,185,0.5) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top; 
+    background: -ms-linear-gradient(bottom, rgba(255,255,255,0) 0%, rgba(200,200,200,0.3) 80%, rgba(185,185,185,0.5) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top;
+    background: linear-gradient(bottom, rgba(255,255,255,0) 0%, rgba(200,200,200,0.3) 80%, rgba(185,185,185,0.5) 100%), url(http://web.jstam.com/images/noise_pattern_with_crosslines.png) repeat left top; 
+    box-shadow: 1px 1px 0 rgb(160,160,160),
+        2px 2px 0 rgb(150,150,150),
+        3px 3px 0 rgb(140,140,140),
+        4px 4px 0 rgb(130,130,130),
+        5px 5px 0 rgb(120,120,120),
+        3px 6px 1px rgba(0,0,0,0.1),
+        0 0 5px rgba(0,0,0,0.1),
+        0 1px 6px rgba(0,0,0,0.3),
+        1px 3px 7px rgba(0,0,0,0.2);
+    color: rgba(60,60,60,0.7);
+    
+    -moz-transform: translate(0px, 1px);
+    -webkit-transform: translate(0px, 1px);
+    -o-transform: translate(0px, 1px);
+    -ms-transform: translate(0px, 1px);
+    transform: translate(0px, 1px);
+    
+    -webkit-transition: all 200ms ease-out;
+    -moz-transition: all 200ms ease-out;
+    -ms-transition: all 200ms ease-out;
+    -o-transition: all 200ms ease-out;
+    transition: all 200ms ease-out;
+}
+
+
+/**
+ * =======================================================
+ * END CSS3 BUTTONS
+ * =======================================================
+ */
+
+body.light    {background-color:whitesmoke;}
+body.light h1,
+body.light h2 {text-shadow:0px 1px 4px rgba(0,0,0,0.2);}
+a#toggler {
+  position:fixed !important;
+  position:absolute;
+  bottom:10px;
+  right:10px; 
+  font:bold 11px Arial;
+  color:gold;    
+}
+   </style>
 
     <div>
     <a href="../index.php"><img src="https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1541069446753&di=de93c02b9660f67fa00bbfd2f950c0da&imgtype=0&src=http%3A%2F%2Fimage3.cnpp.cn%2Fupload%2Fimages%2F20170708%2F15472435643_210x210.gif" /></a>

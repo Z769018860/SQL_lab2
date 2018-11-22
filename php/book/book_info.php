@@ -5,7 +5,7 @@
     <title>果壳12306-查看车票详情</title>
 </head>
 
-<body>
+<body background="../image/123.jpg">
 	<center>
 	<p><H1 id="h1"> 欢迎访问果壳12306网站</H1></p>
             <a href="../index.php"><img src="../image/ad.png" /></a>
