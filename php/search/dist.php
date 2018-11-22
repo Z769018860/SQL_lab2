@@ -7,7 +7,13 @@
 
 <body background="../image/123.jpg">
 	<center>
-	<p><H1 id="h1"> 欢迎访问果壳12306网站</H1></p>
+<div class="container">
+
+ <h1 class="row skew-title"> <span>欢</span><span>迎</span><span>访</span><span>问</span><span>果</span><span class="last">壳</span>   <span>1</span><span>2</span><span>3</span><span class="last">0</span>   <span class="alt">6</span><span class="alt">网</span><span class="alt">站</span><span class="alt last">!</span> </h1>
+
+ <p class="row row--intro"></p>
+
+</div>
             <a href="../index.php"><img src="../image/ad.png" /></a>
     <p style="background:url('../image/ad.png') no-repeat;"></p>
 	<div><p> <b><H2>两地间车次查询结果</h2></b></p></div>
@@ -716,7 +722,7 @@ $line=0;
 while ($row=pg_fetch_row($ret))
 {
 $line++;
-if ($line>50)
+if ($line>200)
 	break;
 $trainid=$row[0];
 //echo "$trainid";
@@ -869,12 +875,8 @@ if (!$ret_ins)
 }
 
 }
-/*
+
 $get_order=<<<EOF
--- 输入出发地城市名、到达地城市名、出发日期和出发时间,查询两地之间换乘一次的列车和余票信息。
-
--- 查询两地之间换乘一次的列车和余票信息的SQL语句如下，其中'北京'、'常州'、'2018-11-20'、'00:00'是可改变的参数。
-
 
 -- 先搜过北京的列车
     WITH T0(T0_Name,T0_StNum) AS
@@ -933,7 +935,7 @@ $get_order=<<<EOF
     -- 北京->终点站的所有
     TEMP1(Name1,St0,St1,StNum1,City1,Time1) AS
     (
-        SELECT Train.T_Name,S1.St1,Train.T_Station,Train.T_StNum,Station.St_City,Train.T_ArrivalTime
+        SELECT Train.T_Name,S1.St1,Train.T_Station,Train.T_StNum,Station.St_City,Train.T_StartTime
         FROM Train,S1,Station
         WHERE Train.T_Name = S1.Name1
             AND Train.T_StNum > S1.StNum1
@@ -1001,6 +1003,7 @@ $get_order=<<<EOF
         FROM T4
         WHERE (St1 = St2 AND 60 <= AllTime AND AllTime <= 240)
             OR (St1 != St2 AND 120 <= AllTime AND AllTime <= 240)
+        GROUP BY Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime
     ),
 -- 计算第一段旅程票价
     -- 搜出所有票价（未做减法）
@@ -1042,13 +1045,58 @@ $get_order=<<<EOF
         FROM T_Money1
         GROUP BY T_Money1.Name1,T_Money1.St1,T_Money1.St2
     ),
-    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
-    T_MinMoney21(Name1,St1,St2,Type1,Money1) AS
+    -- 开始算余票
+    TS_Num11(train,St1,St2,fromNum) AS
     (
-        SELECT Name1,St1,St2,Type1,MIN(Money1)
-        FROM T_Type1
-        WHERE Money1 <> 0
-        GROUP BY Name1,Type1,St1,St2
+				SELECT Train.T_Name,T5.St01,T5.St1,Train.T_StNum
+                From Train,T5
+                WHERE Train.T_Name = T5.Name1
+                AND Train.T_Station = T5.St01
+    ),
+    TS_Num21(train,St1,St2,toNum) AS
+    (
+				SELECT Train.T_Name,T5.St01,T5.St1,Train.T_StNum
+                From Train,T5
+                WHERE Train.T_Name = T5.Name1
+                AND Train.T_Station = T5.St1
+    ),
+    TS_Num1(train,St1,St2,fromNum,toNum) AS
+    (
+                SELECT TS_Num11.train,TS_Num11.St1,TS_Num11.St2,TS_Num11.fromNum,TS_Num21.toNum
+                FROM TS_Num11,TS_Num21
+                WHERE TS_Num11.train = TS_Num21.train
+                    AND TS_Num21.St1 = TS_Num11.St1
+                    AND TS_Num21.St2 = TS_Num11.St2
+    ),
+    -- 得到每次列车的座位类型及其余票
+    TS_Seat1(Train1,St1,St2,Type1,Num1) AS
+    (
+				SELECT TS_Num1.train,TS_Num1.St1,TS_Num1.St2,Seat.Se_Type,MIN(Seat.Se_Num)
+				FROM Train,Seat,TS_Num1
+				WHERE Train.T_Name = TS_Num1.train
+    				AND Seat.Se_Train = Train.T_Name
+    				AND Seat.Se_Date = '$from_date'
+    				AND Seat.Se_Station = Train.T_Station
+    				AND TS_Num1.fromNum < Train.T_StNum
+                    AND Train.T_StNum > TS_Num1.toNum-1
+                GROUP BY TS_Num1.train,TS_Num1.St1,TS_Num1.St2,Seat.Se_Type
+    ),
+    -- 得到每次列车**有余票**的座位类型、价格及其余票数
+    TS_leftseat1(Train1,St1,St2,Type1,Money1,Num1) AS
+    (
+				SELECT TS_Seat1.Train1,TS_Seat1.St1,TS_Seat1.St2,TS_Seat1.Type1,T_Type1.Money1,TS_Seat1.Num1
+				FROM TS_Seat1,T_Type1
+				WHERE TS_Seat1.Num1 <> 0
+                    AND T_Type1.Money1 <> 0
+                    AND T_Type1.Name1 = TS_Seat1.Train1
+                    AND T_Type1.Type1 = TS_Seat1.Type1
+    ),
+    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
+    T_MinMoney21(Name1,St1,St2,Type1,Money1,Num1) AS
+    (
+        SELECT Train1,St1,St2,Type1,MIN(Money1),Num1
+        FROM TS_leftseat1
+        GROUP BY Train1,Type1,Num1,St1,St2
     ),
 -- 计算第二段旅程票价
     -- 搜出所有票价（未做减法）
@@ -1090,104 +1138,20 @@ $get_order=<<<EOF
         FROM T_Money2
         GROUP BY T_Money2.Name2,T_Money2.St1,T_Money2.St2
     ),
-    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
-    T_MinMoney22(Name2,St1,St2,Type2,Money2) AS
-    (
-        SELECT Name2,St1,St2,Type2,MIN(Money2)
-        FROM T_Type2
-        WHERE Money2 <> 0
-        GROUP BY Name2,Type2,St1,St2
-    ),    
--- 获得两次列车的最低票价所对应的座位类型、价格及其余票数，并将两最低价格相加
-    T_MinMoneyFinal(Name1,St11,St12,Time1,Name2,St21,St22,Time2,AllTime,MoneySum) AS
-    (
-        SELECT T_MinMoney21.Name1,T_MinMoney21.St1,T_MinMoney21.St2,T5.Time1,T_MinMoney22.Name2,T_MinMoney22.St1,T_MinMoney22.St2,T5.Time2,T5.AllTime,T_MinMoney21.Money1 + T_MinMoney22.Money2
-        FROM T_MinMoney21,T_MinMoney22,T5
-        WHERE T_MinMoney21.Name1 = T5.Name1
-            AND T_MinMoney21.St1 = T5.St01
-            AND T_MinMoney21.St2 = T5.St1
-            AND T_MinMoney22.Name2 = T5.Name2
-            AND T_MinMoney22.St1 = T5.St02
-            AND T_MinMoney22.St2 = T5.St2
-    ),
-    T6(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime,MoneySum) AS
-    (
-        SELECT *
-        FROM T_MinMoneyFinal
-        ORDER BY MoneySum
-        LIMIT 50
-    ),
--- T5(Name1,St01,St1,Time1,Name2,St02,St2,Time2,AllTime)    
------------------------------------------------------------------------------------------------------------------
--- 计算第一段旅程余票
-    -- 开始算余票
-    TS_Num11(train,St1,St2,fromNum) AS
-    (
-				SELECT Train.T_Name,T6.St01,T6.St1,Train.T_StNum
-                From Train,T6
-                WHERE Train.T_Name = T6.Name1
-                AND Train.T_Station = T6.St01
-    ),
-    TS_Num21(train,St1,St2,toNum) AS
-    (
-				SELECT Train.T_Name,T6.St01,T6.St1,Train.T_StNum
-                From Train,T6
-                WHERE Train.T_Name = T6.Name1
-                AND Train.T_Station = T6.St1
-    ),
-    TS_Num1(train,St1,St2,fromNum,toNum) AS
-    (
-                SELECT TS_Num11.train,TS_Num11.St1,TS_Num11.St2,TS_Num11.fromNum,TS_Num21.toNum
-                FROM TS_Num11,TS_Num21
-                WHERE TS_Num11.train = TS_Num21.train
-                    AND TS_Num21.St1 = TS_Num11.St1
-                    AND TS_Num21.St2 = TS_Num11.St2
-    ),
-    -- 得到每次列车的座位类型及其余票
-    TS_Seat1(Train1,St1,St2,Type1,Num1) AS
-    (
-				SELECT TS_Num1.train,TS_Num1.St1,TS_Num1.St2,Seat.Se_Type,MIN(Seat.Se_Num)
-				FROM Train,Seat,TS_Num1
-				WHERE Train.T_Name = TS_Num1.train
-    				AND Seat.Se_Train = Train.T_Name
-    				AND Seat.Se_Date = '$from_date'
-    				AND Seat.Se_Station = Train.T_Station
-    				AND TS_Num1.fromNum < Train.T_StNum
-                    AND Train.T_StNum > TS_Num1.toNum-1
-                GROUP BY TS_Num1.train,TS_Num1.St1,TS_Num1.St2,Seat.Se_Type
-    ),
-    -- 得到每次列车**有余票**的座位类型、价格及其余票数
-    TS_leftseat1(Train1,St1,St2,Type1,Money1,Num1) AS
-    (
-				SELECT TS_Seat1.Train1,TS_Seat1.St1,TS_Seat1.St2,TS_Seat1.Type1,T_Type1.Money1,TS_Seat1.Num1
-				FROM TS_Seat1,T_Type1
-				WHERE TS_Seat1.Num1 <> 0
-                    AND T_Type1.Money1 <> 0
-                    AND T_Type1.Name1 = TS_Seat1.Train1
-                    AND T_Type1.Type1 = TS_Seat1.Type1
-    ),
-    -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
-    T_MinMoney211(Name1,St1,St2,Type1,Money1,Num1) AS
-    (
-        SELECT Train1,St1,St2,Type1,MIN(Money1),Num1
-        FROM TS_leftseat1
-        GROUP BY Train1,Type1,Num1,St1,St2
-    ),
- -- 计算第二段旅程余票
     -- 开始算余票
     TS_Num12(train,St1,St2,fromNum) AS
     (
-				SELECT Train.T_Name,T6.St02,T6.St2,Train.T_StNum
-                From Train,T6
-                WHERE Train.T_Name = T6.Name2
-                AND Train.T_Station = T6.St2
+				SELECT Train.T_Name,T5.St02,T5.St2,Train.T_StNum
+                From Train,T5
+                WHERE Train.T_Name = T5.Name2
+                AND Train.T_Station = T5.St2
     ),
     TS_Num22(train,St1,St2,toNum) AS
     (
-				SELECT Train.T_Name,T6.St02,T6.St2,Train.T_StNum
-                From Train,T6
-                WHERE Train.T_Name = T6.Name2
-                AND Train.T_Station = T6.St02
+				SELECT Train.T_Name,T5.St02,T5.St2,Train.T_StNum
+                From Train,T5
+                WHERE Train.T_Name = T5.Name2
+                AND Train.T_Station = T5.St02
     ),
     TS_Num2(train,St1,St2,fromNum,toNum) AS
     (
@@ -1221,52 +1185,46 @@ $get_order=<<<EOF
                     AND T_Type2.Type2 = TS_Seat2.Type2
     ),
     -- 获得每次列车的最低票价所对应的座位类型、价格及其余票数
-    T_MinMoney221(Name2,St1,St2,Type2,Money2,Num2) AS
+    T_MinMoney22(Name2,St1,St2,Type2,Money2,Num2) AS
     (
         SELECT Train2,St1,St2,Type2,MIN(Money2),Num2
         FROM TS_leftseat2 
         GROUP BY Train2,Type2,Num2,St1,St2
     ),
 -- 获得两次列车的最低票价所对应的座位类型、价格及其余票数，并将两最低价格相加(附加时间)
-    T_MinMoneyFinal1(Name1,St11,Time11,St12,T12,Type1,Money1,Num1,Name2,St21,Time21,St22,Time22,Type2,Money2,Num2,MoneySum) AS
+    T_MinMoneyFinal(Name1,St11,Time11,St12,T12,Type1,Money1,Num1,Name2,St21,Time21,St22,Time22,Type2,Money2,Num2,AllTime,MoneySum) AS
     (
-        SELECT  T_MinMoney211.Name1,T_MinMoney211.St1,TEMP1.Time1,T_MinMoney211.St2,T6.Time1,T_MinMoney211.Type1,T_MinMoney211.Money1,T_MinMoney211.Num1,
-               T_MinMoney221.Name2,T_MinMoney221.St1,TEMP2.Time2,T_MinMoney221.St2,T6.Time2,T_MinMoney221.Type2,T_MinMoney221.Money2,T_MinMoney221.Num2,
-               T_MinMoney211.Money1 + T_MinMoney221.Money2
-        FROM T_MinMoney211,T_MinMoney221,T6,TEMP1,TEMP2
-        WHERE T_MinMoney211.Name1 = T6.Name1
-            AND T_MinMoney211.St1 = T6.St01
-            AND T_MinMoney211.St2 = T6.St1
-            AND T_MinMoney221.Name2 = T6.Name2
-            AND T_MinMoney221.St1 = T6.St02
-            AND T_MinMoney221.St2 = T6.St2
-            AND TEMP1.Name1 = T6.Name1
-            AND TEMP1.St0 = T6.St01
-            AND TEMP1.St1 = T6.St1
-            AND TEMP2.Name2 = T6.Name2
-            AND TEMP2.St0 = T6.St02
-            AND TEMP2.St2 = T6.St2
-    )
-    SELECT DISTINCT T_MinMoneyFinal1.*,TTime1.AllTime+TTime2.AllTime+T6.AllTime
-    FROM  T_MinMoneyFinal1,TTime1,TTime2,T6
-    WHERE TTime1.TT_Name = T_MinMoneyFinal1.Name1
-        AND TTime2.TT_Name = T_MinMoneyFinal1.Name2
-        AND TTime1.St1 = T_MinMoneyFinal1.St11
-        AND TTime1.St2 = T_MinMoneyFinal1.St12
-        AND TTime2.St1 = T_MinMoneyFinal1.St21
-        AND TTime2.St2 = T_MinMoneyFinal1.St22
-        AND T_MinMoneyFinal1.Name1 = T6.Name1
-        AND T_MinMoneyFinal1.St11 = T6.St01
-        AND T_MinMoneyFinal1.Name2 = T6.St1
-        AND T_MinMoneyFinal1.Name2 = T6.Name2
-        AND T_MinMoneyFinal1.St21 = T6.St02
-        AND T_MinMoneyFinal1.St22 = T6.St2 
-    ORDER BY MoneySum,TTime1.AllTime+TTime2.AllTime+T6.AllTime,T_MinMoneyFinal1.Time11;
+        SELECT T_MinMoney21.Name1,T_MinMoney21.St1,S1.Time1,T_MinMoney21.St2,T5.Time1,T_MinMoney21.Type1,T_MinMoney21.Money1,T_MinMoney21.Num1,
+               T_MinMoney22.Name2,T_MinMoney22.St1,S2.Time2,T_MinMoney22.St2,T5.Time2,T_MinMoney22.Type2,T_MinMoney22.Money2,T_MinMoney22.Num2,
+                (CASE 
+                    WHEN DATE_PART('hour', S2.Time2::time - S1.Time1::time) * 60 + DATE_PART('minute', S2.Time2::time - S1.Time1::time) > 0 
+                    THEN DATE_PART('hour', S2.Time2::time - S1.Time1::time) * 60 + DATE_PART('minute', S2.Time2::time - S1.Time1::time)
+                    ELSE DATE_PART('hour', '24:00'::time - S1.Time1::time) * 60 + DATE_PART('minute', '24:00'::time - S1.Time1::time) + 
+                    DATE_PART('hour', S2.Time2::time - '00:00'::time) * 60 + DATE_PART('minute', S2.Time2::time - '00:00'::time)
+                    END
+                )AllTime,
+                T_MinMoney21.Money1 + T_MinMoney22.Money2
+        FROM T_MinMoney21,T_MinMoney22,T5,S1,S2
+        WHERE T_MinMoney21.Name1 = T5.Name1
+            AND T_MinMoney21.St1 = T5.St01
+            AND T_MinMoney21.St2 = T5.St1
+            AND T_MinMoney22.Name2 = T5.Name2
+            AND T_MinMoney22.St1 = T5.St02
+            AND T_MinMoney22.St2 = T5.St2
+            AND S1.Name1 = T5.Name1
+            AND S1.St1 = T5.St01
+            AND S2.Name2 = T5.Name2
+            AND S2.St2 = T5.St02
+   )
+    SELECT DISTINCT *
+    FROM T_MinMoneyFinal
+    ORDER BY MoneySum,AllTime,Time11;
+
 EOF;
 $ret=pg_query($dbconn,$get_order);
 if (!$ret)
 	echo "AAAAAAAAAAAAAAAAA!!!";
-else*/
+else
 {
 	$line=0;
 	while ($row=pg_fetch_row($ret))
@@ -1303,10 +1261,10 @@ $leftnum=$row[7];
 	echo "<td><a href=\"../book/booking.php?date=$from_date&trainid=$trainid&type=$type&price=$price&from_station=$from_station&to_station=$to_station\">$leftnum</a></td>";
 
 $trainid=$row[8];
-$from_station=$row[9];
-$go_time=$row[10];
-$to_station=$row[11];
-$got_time=$row[12];
+$from_station=$row[11];
+$go_time=$row[12];
+$to_station=$row[9];
+$got_time=$row[10];
 //$during_time=$row[5];
 $type=$row[13];
 $price=$row[14]+5;
@@ -1491,7 +1449,85 @@ a#toggler {
   color:gold;    
 }
    </style>
+<script src="js/jquery.min.js"></script>
 
+<script>
+
+(function() {
+
+  $('.skew-title').children('span').hover((function() {
+
+    var $el, n;
+
+    $el = $(this);
+
+    n = $el.index() + 1;
+
+    $el.addClass('flat');
+
+    if (n % 2 === 0) {
+
+      return $el.prev().addClass('flat');
+
+    } else {
+
+      if (!$el.hasClass('last')) {
+
+        return $el.next().addClass('flat');
+
+      }
+
+    }
+
+  }), function() {
+
+    return $('.flat').removeClass('flat');
+
+  });
+
+}).call(this);
+
+</script>
+
+   <style type="text/css">
+   <style type="text/css">
+body { margin-top: 20px; background-color: #112; background-color: #0c2d41; font-family: Roboto, 'helvetica neue', Helvetica, Arial, sans-serif; }
+
+.container { width: 800px; margin: auto; }
+
+.row { position: relative; height: 30px; z-index: 1; clear: both; margin-bottom: 10px; text-align: center; }
+
+.row--intro { padding-top: 20px; font-size: 16px; line-height: 28px; font-weight: 300; color: #fff; opacity: 0.4; }
+
+.row--intro span { font-size: 11px; }
+
+.skew-title { font-size: 25px; }
+
+.skew-title span { position: relative; display: inline-block; width: 40px; height: 50px; margin: auto; z-index: 2; text-align: center; color: #fff; font-family: 'roboto condensed'; font-weight: 700; font-size: 35.714285714285715px; line-height: 50px; -webkit-transform: skewY(-15deg); transform: skewY(-15deg); -webkit-transform-origin: 0 100%; transform-origin: 0 100%; transition: all 0.2s; cursor: default; }
+
+.skew-title span:after, .skew-title span:before { display: block; top: 0; left: 0; width: 40px; height: 50px; position: absolute; background: #185a81; content: ' '; z-index: -1; transition: all 0.2s; }
+
+.skew-title span:before { background: rgba(0,0,0,0.1); -webkit-transform: skewY(15deg); transform: skewY(15deg); -webkit-transform-origin: 0 0; transform-origin: 0 0; }
+
+.skew-title span:nth-child(even) { background-color: #144c6e; -webkit-transform: skewY(15deg); transform: skewY(15deg); -webkit-transform-origin: 100% 100%; transform-origin: 100% 100%; color: #d9d9d9; }
+
+.skew-title span:nth-child(even):after { background-color: #144c6e; }
+
+.skew-title span:nth-child(even):before { -webkit-transform-origin: 100% 0; transform-origin: 100% 0; -webkit-transform: skewY(-15deg); transform: skewY(-15deg); }
+
+.skew-title span.flat { -webkit-transform: skewY(0); transform: skewY(0); color: #fff; }
+
+.skew-title span.flat:before { -webkit-transform: skewY(0); transform: skewY(0); }
+
+.skew-title span.flat:nth-child(even):after { background-color: #185a81; }
+
+.skew-title span.alt:after { background-color: #b94a2c; }
+
+.skew-title span.alt:nth-child(even):after { background-color: #9d3f25; }
+
+.skew-title span.alt.flat:nth-child(even):after { background-color: #b94a2c; }
+
+</style>
     <div>
     <a href="../index.php"><img src="https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1541069446753&di=de93c02b9660f67fa00bbfd2f950c0da&imgtype=0&src=http%3A%2F%2Fimage3.cnpp.cn%2Fupload%2Fimages%2F20170708%2F15472435643_210x210.gif" /></a>
     <p style="background:url('https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1541069446753&di=de93c02b9660f67fa00bbfd2f950c0da&imgtype=0&src=http%3A%2F%2Fimage3.cnpp.cn%2Fupload%2Fimages%2F20170708%2F15472435643_210x210.gif') no-repeat;"></p>
@@ -1502,3 +1538,4 @@ a#toggler {
 	</center>
 </body>
 </html>
+
